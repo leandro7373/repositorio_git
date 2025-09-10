@@ -158,14 +158,15 @@ export default function CatalogoTenis() {
                       type="text"
                       value={p.numeracao}
                       onChange={e => atualizarItemCarrinho(idx, "numeracao", e.target.value)}
+                      onBlur={e => atualizarCarrinhoPrincipal(idx, "numeracao", e.target.value)}
                       style={{ width: 48, fontSize: "0.9em" }}
                     />
-                    <label style={{ fontSize: "0.85em", marginLeft: 6 }}>Qtd:</label>
                     <input
                       type="number"
                       min={1}
                       value={p.quantidade}
                       onChange={e => atualizarItemCarrinho(idx, "quantidade", e.target.value)}
+                      onBlur={e => atualizarCarrinhoPrincipal(idx, "quantidade", e.target.value)}
                       style={{ width: 40, fontSize: "0.9em" }}
                     />
                   </div>
