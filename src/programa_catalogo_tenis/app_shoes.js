@@ -2,8 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import Papa from "papaparse";
 import "./app_shoes.css";
 
-// URL pública do CSV hospedado no Google Sheets
-const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSMy3ycr2KZJ8UA6V_uoBvHVicKx3W79C0-zaW_7m5ANTL8M9-LwppcIuxK7P7scAr7-nM7g1rTXMRS/pub?gid=1965323582&single=true&output=csv";
+const CSV_URL = "https://raw.githubusercontent.com/leandro7373/repositorio_git/main/CSV_principal/todos_os_pares_unico_tenis__com_links_github.csv";
 
 function fetchCSV(url, callback) {
   Papa.parse(url, {
