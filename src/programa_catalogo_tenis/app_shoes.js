@@ -373,7 +373,7 @@ export default function CatalogoTenis() {
                 src={p.image_link_github}
                 className="card-img-top"
                 alt={p.modelo}
-                style={{ height: 200, objectFit: "cover" }}
+                style={{ height: 210, objectFit: "cover" }}
               />
               <div className="card-body d-flex flex-column">
                 <div className="fw-semibold">{p.modelo}</div>
