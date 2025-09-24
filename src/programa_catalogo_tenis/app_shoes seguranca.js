@@ -2,64 +2,72 @@ import React, { useState, useEffect, useRef } from "react";
 import Papa from "papaparse";
 import "./app_shoes.css";
 
+// URL do CSV público do Google Sheets
 const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSMy3ycr2KZJ8UA6V_uoBvHVicKx3W79C0-zaW_7m5ANTL8M9-LwppcIuxK7P7scAr7-nM7g1rTXMRS/pub?gid=1965323582&single=true&output=csv";
 
+// Função para buscar e ler o CSV
 function fetchCSV(url, callback) {
   Papa.parse(url, {
-    download: true,
-    header: true,
-    skipEmptyLines: true,
-    complete: (results) => callback(results.data),
+    download: true, // baixa o arquivo
+    header: true, // interpreta cabeçalhos
+    skipEmptyLines: true, // ignora linhas vazias
+    complete: (results) => callback(results.data), // chama callback com os dados
   });
 }
 
+// Função para gerar opções de numeração usando as colunas min e max do produto
 function gerarNumeracoes(produto) {
   let nums = [];
-  let min = parseInt(produto.min);
-  let max = parseInt(produto.max);
+  let min = parseInt(produto.min); // valor mínimo do produto
+  let max = parseInt(produto.max); // valor máximo do produto
   if (!isNaN(min) && !isNaN(max) && min <= max) {
     for (let n = min; n <= max; n++) {
-      nums.push(n);
+      nums.push(n); // adiciona cada número disponível
     }
   }
   return nums;
 }
 
+// Componente principal do catálogo
 export default function CatalogoTenis() {
-  const [modalAberto, setModalAberto] = useState(false);
-  const [tenisModal, setTenisModal] = useState(null);
-  const [modalIndex, setModalIndex] = useState(0);
-  const [produtos, setProdutos] = useState([]);
-  const [busca, setBusca] = useState("");
-  const [carrinho, setCarrinho] = useState([]);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [marcaSelecionada, setMarcaSelecionada] = useState("");
-  const [valores, setValores] = useState([0, 1000]);
-  const [ultimosExibidos, setUltimosExibidos] = useState([]);
-  const isFirstRender = useRef(true);
-  const [itensCarrinho, setItensCarrinho] = useState([]);
+  // Estados principais do app
+  const [modalAberto, setModalAberto] = useState(false); // controla se o modal está aberto
+  const [tenisModal, setTenisModal] = useState(null); // produto exibido no modal
+  const [modalIndex, setModalIndex] = useState(0); // índice da imagem exibida no modal
+  const [produtos, setProdutos] = useState([]); // lista de produtos do CSV
+  const [busca, setBusca] = useState(""); // termo de busca
+  const [carrinho, setCarrinho] = useState([]); // itens do carrinho
+  const [drawerOpen, setDrawerOpen] = useState(false); // controla se o carrinho está aberto
+  const [menuOpen, setMenuOpen] = useState(false); // controla se o menu de marcas está aberto
+  const [marcaSelecionada, setMarcaSelecionada] = useState(""); // marca filtrada
+  const [valores, setValores] = useState([0, 1000]); // faixa de preço
+  const [ultimosExibidos, setUltimosExibidos] = useState([]); // produtos exibidos
+  const isFirstRender = useRef(true); // evita filtro na primeira renderização
+  const [itensCarrinho, setItensCarrinho] = useState([]); // carrinho com quantidade e numeração
 
+  // Busca os produtos do CSV ao carregar
   useEffect(() => {
     fetchCSV(CSV_URL, (data) => {
-      setProdutos(data);
+      setProdutos(data); // salva produtos no estado
+      // Calcula faixa de preço para filtro
       const precos = data.map((p) => {
         const valor = p["preço_venda"] || p["preco_atacado_fornecedor"] || "0";
         return Number(valor.replace("R$", "").replace(",", "."));
       }).filter((v) => !isNaN(v));
-      const min = Math.min(...precos);
-      const max = Math.max(...precos);
-      setValores([min, max]);
-      setUltimosExibidos(data);
+      const min = Math.min(...precos); // menor preço
+      const max = Math.max(...precos); // maior preço
+      setValores([min, max]); // define faixa de preço
+      setUltimosExibidos(data); // exibe todos inicialmente
     });
   }, []);
 
+  // Filtra produtos conforme busca, marca e faixa de preço
   useEffect(() => {
     if (isFirstRender.current) {
-      isFirstRender.current = false;
+      isFirstRender.current = false; // ignora primeira renderização
       return;
     }
-    const termo = busca.toLowerCase();
+    const termo = busca.toLowerCase(); // termo de busca em minúsculo
     const filtrados = produtos.filter((p) => {
       const valor = p["preço_venda"] || p["preco_atacado_fornecedor"] || "0";
       const v = Number(valor.replace("R$", "").replace(",", "."));
@@ -75,10 +83,11 @@ export default function CatalogoTenis() {
       );
     });
     if (filtrados.length > 0 || (busca === "" && marcaSelecionada === "")) {
-      setUltimosExibidos(filtrados.length > 0 ? filtrados : produtos);
+      setUltimosExibidos(filtrados.length > 0 ? filtrados : produtos); // exibe filtrados ou todos
     }
   }, [busca, produtos, valores, marcaSelecionada]);
 
+  // Atualiza itens do carrinho com quantidade e numeração
   useEffect(() => {
     setItensCarrinho(
       carrinho.map((p, idx) => ({
@@ -90,14 +99,17 @@ export default function CatalogoTenis() {
     );
   }, [carrinho]);
 
+  // Adiciona produto ao carrinho
   function addCarrinho(produto) {
     setCarrinho((c) => [...c, produto]);
   }
 
+  // Remove produto do carrinho
   function removeCarrinho(idx) {
     setCarrinho((c) => c.filter((_, i) => i !== idx));
   }
 
+  // Atualiza quantidade ou numeração de um item do carrinho
   function atualizarItemCarrinho(idx, campo, valor) {
     setItensCarrinho((itens) =>
       itens.map((item, i) =>
@@ -111,20 +123,23 @@ export default function CatalogoTenis() {
     );
   }
 
+  // Modal de imagem ampliada com bolinhas de navegação e quadradinhos de numeração
   function ModalImagem() {
-    if (!modalAberto || !tenisModal) return null;
+    if (!modalAberto || !tenisModal) return null; // só mostra se aberto
     const imagens = [
       tenisModal.image_link_github,
       tenisModal.image2_link_github
-    ].filter(Boolean);
+    ].filter(Boolean); // pega imagens válidas
 
-    const [numeracaoSelecionada, setNumeracaoSelecionada] = useState(null);
-    const [botaoCarrinhoAtivo, setBotaoCarrinhoAtivo] = useState(false);
-    const touchStartX = useRef(null);
+    const [numeracaoSelecionada, setNumeracaoSelecionada] = useState(null); // numeração escolhida
+    const [botaoCarrinhoAtivo, setBotaoCarrinhoAtivo] = useState(false); // feedback visual do botão
+    const touchStartX = useRef(null); // para swipe de imagens
 
+    // Inicia swipe
     function handleTouchStart(e) {
       touchStartX.current = e.touches[0].clientX;
     }
+    // Finaliza swipe e troca imagem se necessário
     function handleTouchEnd(e) {
       if (touchStartX.current === null) return;
       const touchEndX = e.changedTouches[0].clientX;
@@ -136,24 +151,27 @@ export default function CatalogoTenis() {
       touchStartX.current = null;
     }
 
-    const todosNumeros = Array.from({length: 12}, (_, i) => 34 + i);
-    const disponiveis = gerarNumeracoes(tenisModal);
+    // Quadradinhos de numeração organizados em grade 4x3
+    const todosNumeros = Array.from({length: 12}, (_, i) => 34 + i); // [34, ..., 45]
+    const disponiveis = gerarNumeracoes(tenisModal); // numerações disponíveis
 
+    // Função para adicionar ao carrinho pelo modal
     function adicionarAoCarrinhoModal() {
       if (!numeracaoSelecionada) {
         alert("Selecione uma numeração antes de adicionar ao carrinho.");
         return;
       }
-      setBotaoCarrinhoAtivo(true);
+      setBotaoCarrinhoAtivo(true); // ativa feedback visual
       addCarrinho({ ...tenisModal, numeracao: numeracaoSelecionada, quantidade: 1 });
       setTimeout(() => {
-        setBotaoCarrinhoAtivo(false);
-        setModalAberto(false);
-      }, 250);
+        setBotaoCarrinhoAtivo(false); // desativa feedback
+        setModalAberto(false); // fecha modal
+      }, 250); // tempo para mostrar o feedback visual
     }
 
     return (
       <>
+        {/* Fundo escurecido */}
         <div
           style={{
             position: "fixed",
@@ -164,8 +182,9 @@ export default function CatalogoTenis() {
             alignItems: "center",
             justifyContent: "center"
           }}
-          onClick={() => setModalAberto(false)}
+          onClick={() => setModalAberto(false)} // fecha modal ao clicar fora
         >
+          {/* Modal centralizado e responsivo */}
           <div
             style={{
               background: "#fff",
@@ -180,8 +199,9 @@ export default function CatalogoTenis() {
               alignItems: "center",
               position: "relative"
             }}
-            onClick={e => e.stopPropagation()}
+            onClick={e => e.stopPropagation()} // impede fechar ao clicar dentro
           >
+            {/* Imagem ampliada */}
             <div
               style={{
                 width: "100%",
@@ -203,10 +223,11 @@ export default function CatalogoTenis() {
                   objectFit: "contain",
                   cursor: "pointer"
                 }}
-                onClick={() => setModalIndex((modalIndex + 1) % imagens.length)}
-                onTouchStart={handleTouchStart}
-                onTouchEnd={handleTouchEnd}
+                onClick={() => setModalIndex((modalIndex + 1) % imagens.length)} // troca imagem ao clicar
+                onTouchStart={handleTouchStart} // inicia swipe
+                onTouchEnd={handleTouchEnd} // finaliza swipe
               />
+              {/* Bolinhas de navegação */}
               <div
                 style={{
                   display: "flex",
@@ -219,12 +240,12 @@ export default function CatalogoTenis() {
                 {imagens.map((_, idx) => (
                   <span
                     key={idx}
-                    onClick={() => setModalIndex(idx)}
+                    onClick={() => setModalIndex(idx)} // troca imagem ao clicar na bolinha
                     style={{
                       width: 10,
                       height: 10,
                       borderRadius: "50%",
-                      background: modalIndex === idx ? "#3a2e4f" : "#ede7f6",
+                      background: modalIndex === idx ? "#3a2e4f" : "#ede7f6", // cor ativa/inativa
                       border: modalIndex === idx ? "2px solid #3a2e4f" : "2px solid #ede7f6",
                       display: "inline-block",
                       cursor: "pointer",
@@ -234,9 +255,11 @@ export default function CatalogoTenis() {
                 ))}
               </div>
             </div>
+            {/* Informações do tênis */}
             <div style={{ fontWeight: 600, fontSize: "1.1rem", marginBottom: 20 }}>
               {tenisModal.marca} - {tenisModal.modelo}
             </div>
+            {/* Quadradinhos de numeração em grade 4x3, botões grandes e responsivos */}
             <div
               style={{
                 display: "grid",
@@ -247,13 +270,13 @@ export default function CatalogoTenis() {
               }}
             >
               {todosNumeros.map(num => {
-                const disponivel = disponiveis.includes(num);
-                const ativo = numeracaoSelecionada === num;
+                const disponivel = disponiveis.includes(num); // verifica se disponível
+                const ativo = numeracaoSelecionada === num; // verifica se selecionado
                 return (
                   <button
                     key={num}
-                    onClick={() => disponivel && setNumeracaoSelecionada(num)}
-                    disabled={!disponivel}
+                    onClick={() => disponivel && setNumeracaoSelecionada(num)} // seleciona numeração
+                    disabled={!disponivel} // desabilita se não disponível
                     style={{
                       width: 54,
                       height: 54,
@@ -262,13 +285,13 @@ export default function CatalogoTenis() {
                         ? (ativo ? "2.5px solid #3a2e4f" : "1.5px solid #ccc")
                         : "1.5px solid #bbb",
                       background: ativo
-                        ? "#d1c4e9"
+                        ? "#d1c4e9" // cor de fundo se ativo
                         : disponivel
-                          ? "#fff"
-                          : "#f3f0f7",
+                          ? "#fff" // cor de fundo se disponível
+                          : "#f3f0f7", // cor de fundo se indisponível
                       fontWeight: 600,
                       fontSize: "1.3rem",
-                      color: disponivel ? "#3a2e4f" : "#aaa",
+                      color: disponivel ? "#3a2e4f" : "#aaa", // cor do texto
                       cursor: disponivel ? "pointer" : "not-allowed",
                       position: "relative",
                       transition: "border 0.2s, background 0.2s",
@@ -282,12 +305,13 @@ export default function CatalogoTenis() {
                 );
               })}
             </div>
+            {/* Botão Adicionar ao Carrinho com feedback visual */}
             <button
-              onClick={adicionarAoCarrinhoModal}
+              onClick={adicionarAoCarrinhoModal} // adiciona ao carrinho
               style={{
                 minWidth: 180,
                 padding: "12px 24px",
-                background: botaoCarrinhoAtivo ? "#6c63ff" : "#3a2e4f",
+                background: botaoCarrinhoAtivo ? "#6c63ff" : "#3a2e4f", // cor de feedback visual
                 color: "#fff",
                 border: "none",
                 borderRadius: 8,
@@ -303,8 +327,9 @@ export default function CatalogoTenis() {
             >
               {botaoCarrinhoAtivo ? "Adicionado!" : "Adicionar ao Carrinho"}
             </button>
+            {/* Botão "X" para fechar */}
             <button
-              onClick={() => setModalAberto(false)}
+              onClick={() => setModalAberto(false)} // fecha modal
               style={{
                 position: "absolute",
                 top: 12,
@@ -319,9 +344,9 @@ export default function CatalogoTenis() {
                 transition: "color 0.2s"
               }}
               aria-label="Fechar"
-              onMouseDown={e => e.currentTarget.style.color = "#6c63ff"}
-              onMouseUp={e => e.currentTarget.style.color = "#222"}
-              onMouseLeave={e => e.currentTarget.style.color = "#222"}
+              onMouseDown={e => e.currentTarget.style.color = "#6c63ff"} // cor ao clicar
+              onMouseUp={e => e.currentTarget.style.color = "#222"} // volta ao normal
+              onMouseLeave={e => e.currentTarget.style.color = "#222"} // volta ao normal
             >
               &times;
             </button>
@@ -331,12 +356,15 @@ export default function CatalogoTenis() {
     );
   }
 
+  // Carrinho lateral
   function Carrinho() {
+    // Calcula o total do carrinho
     const total = itensCarrinho.reduce((acc, p) => {
       const valor = p["preço_venda"] || p["preco_atacado_fornecedor"] || "0";
       return acc + Number(valor.replace("R$", "").replace(",", ".")) * (Number(p.quantidade) || 1);
     }, 0);
 
+    // Função para enviar pedido via WhatsApp
     function enviarPedido() {
       const mensagem = itensCarrinho.map((p, idx) => (
         `• Código: ${p["cód.tenis"] || "-"}\n` +
@@ -351,238 +379,7 @@ export default function CatalogoTenis() {
       window.open(url, "_blank");
     }
 
-    const [botaoPedidoAtivo, setBotaoPedidoAtivo] = useState(false);
-
-    function SwipeItem({ p, idx }) {
-      const [cardOffset, setCardOffset] = useState(0);
-      const [autoFill, setAutoFill] = useState(false);
-      const touchStartX = useRef(null);
-
-      const SWIPE_TRIGGER = 20;
-      const SWIPE_MAX = 120;
-
-      const DELETE_RECT_WIDTH = 90;
-      const DELETE_RECT_HEIGHT = 120;
-      const DELETE_RECT_RIGHT = 0;
-      const DELETE_RECT_BG = "#e9716fff";
-      const DELETE_RECT_TEXT = "Deletar";
-      const DELETE_RECT_TEXT_COLOR = "#fff";
-      const DELETE_RECT_FONT_SIZE = "1.1rem";
-
-      function handleTouchStart(e) {
-        if (window.innerWidth > 576) return;
-        touchStartX.current = e.touches[0].clientX;
-        setAutoFill(false);
-      }
-
-      function handleTouchMove(e) {
-        if (window.innerWidth > 576) return;
-        if (touchStartX.current === null) return;
-        const deltaX = e.touches[0].clientX - touchStartX.current;
-        setCardOffset(Math.min(deltaX, SWIPE_MAX, 0));
-      }
-
-      function handleTouchEnd(e) {
-        if (window.innerWidth > 576) return;
-        if (cardOffset <= -SWIPE_TRIGGER) {
-          setAutoFill(true);
-          setCardOffset(-SWIPE_MAX);
-        } else if (cardOffset >= SWIPE_TRIGGER) {
-          setAutoFill(true);
-          setCardOffset(SWIPE_MAX);
-        } else {
-          setCardOffset(0);
-          setAutoFill(false);
-        }
-        touchStartX.current = null;
-      }
-
-      const deleteRectVisible = Math.min(Math.abs(cardOffset), DELETE_RECT_WIDTH);
-
-      return (
-        <li
-          className="list-group-item swipe-carrinho"
-          key={idx}
-          style={{
-            position: "relative",
-            overflow: "hidden",
-            touchAction: "pan-y"
-          }}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-        >
-          {/* Retângulo vermelho "Deletar" atrás do card */}
-          <div
-            style={{
-              position: "absolute",
-              top: "50%",
-              right: `${DELETE_RECT_RIGHT}px`,
-              width: `${DELETE_RECT_WIDTH}px`,
-              height: `${DELETE_RECT_HEIGHT}px`,
-              background: DELETE_RECT_BG,
-              color: DELETE_RECT_TEXT_COLOR,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: 0,
-              fontWeight: 700,
-              fontSize: DELETE_RECT_FONT_SIZE,
-              transform: "translateY(-50%)",
-              zIndex: 1,
-              overflow: "hidden"
-            }}
-            onClick={() => removeCarrinho(idx)}
-          >
-            <div
-              style={{
-                width: `${deleteRectVisible}px`,
-                height: "100%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                transition: "none",
-                background: DELETE_RECT_BG,
-                color: DELETE_RECT_TEXT_COLOR,
-                fontWeight: 700,
-                fontSize: DELETE_RECT_FONT_SIZE,
-                borderRadius: 0
-              }}
-            >
-              {DELETE_RECT_TEXT}
-            </div>
-          </div>
-          {/* Card do item do carrinho */}
-          <div
-            className="swipe-content"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              transform: `translateX(${cardOffset}px)`,
-              transition: cardOffset === 0 ? "transform 0.25s cubic-bezier(.4,0,.2,1)" : "none",
-              willChange: "transform",
-              zIndex: 2,
-              position: "relative",
-              background: "#fff",
-              borderRadius: 0,
-              minHeight: "120px",
-              minWidth: "360px",
-              boxSizing: "border-box"
-            }}
-          >
-            <img
-              src={p.image_link_github}
-              alt={p.modelo}
-              style={{ width: 120, height: 120, objectFit: "cover", borderRadius: 8, marginRight: 10 }}
-            />
-            <div style={{ flex: 1 }}>
-              {/* MARCA acima do modelo */}
-              <div
-                className="carrinho-marca"
-                style={{
-                  fontSize: "1rem",        // <-- Altere aqui o tamanho da marca
-                  color: "#1976d2",        // <-- Altere aqui a cor da marca
-                  fontWeight: 600,
-                  marginBottom: "2px"
-                }}
-              >
-                {p.marca}
-              </div>
-              {/* MODELO abaixo da marca */}
-              <div
-                className="carrinho-modelo"
-                style={{
-                  fontSize: "1.2rem",      // <-- Altere aqui o tamanho do modelo
-                  color: "#222",           // <-- Altere aqui a cor do modelo
-                  fontWeight: 700,
-                  marginBottom: "2px"
-                }}
-              >
-                {p.modelo}
-              </div>
-              {/* TAMANHO */}
-              <div
-                className="carrinho-numeracao"
-                style={{
-                  fontSize: "0.95rem",
-                  color: "#555",
-                  marginBottom: "2px"
-                }}
-              >
-                Tam: <span style={{ fontWeight: 500 }}>{p.numeracao || "-"}</span>
-              </div>
-              {/* VALOR */}
-              <div
-                className="carrinho-valor"
-                style={{
-                  fontSize: "1rem",
-                  color: "#388e3c",
-                  fontWeight: "bold",
-                  marginBottom: "2px"
-                }}
-              >
-                {p["preço_venda"] || p["preco_atacado_fornecedor"]}
-              </div>
-              {/* Quantidade customizada */}
-              <div className="d-flex align-items-center gap-2 mt-1">
-                {/* Botão de menos */}
-                <button
-                  type="button"
-                  style={{
-                    width: 32,
-                    height: 32,
-                    border: "1px solid #ccc",
-                    background: "#f3f3f3",
-                    borderRadius: 6,
-                    fontSize: "1.2rem",
-                    fontWeight: "bold",
-                    color: "#222",
-                    cursor: "pointer"
-                  }}
-                  onClick={() => {
-                    if (Number(p.quantidade) > 1) {
-                      atualizarItemCarrinho(idx, "quantidade", Number(p.quantidade) - 1);
-                    }
-                  }}
-                  aria-label="Diminuir quantidade"
-                >-</button>
-                {/* Quantidade atual */}
-                <span
-                  style={{
-                    minWidth: 24,
-                    textAlign: "center",
-                    fontSize: "1.1rem",
-                    fontWeight: 600,
-                    color: "#222"
-                  }}
-                >
-                  {p.quantidade}
-                </span>
-                {/* Botão de mais */}
-                <button
-                  type="button"
-                  style={{
-                    width: 32,
-                    height: 32,
-                    border: "1px solid #ccc",
-                    background: "#f3f3f3",
-                    borderRadius: 6,
-                    fontSize: "1.2rem",
-                    fontWeight: "bold",
-                    color: "#222",
-                    cursor: "pointer"
-                  }}
-                  onClick={() => {
-                    atualizarItemCarrinho(idx, "quantidade", Number(p.quantidade) + 1);
-                  }}
-                  aria-label="Aumentar quantidade"
-                >+</button>
-              </div>
-            </div>
-          </div>
-        </li>
-      );
-    }
+    const [botaoPedidoAtivo, setBotaoPedidoAtivo] = useState(false); // feedback visual do botão
 
     return (
       <div
@@ -603,7 +400,53 @@ export default function CatalogoTenis() {
         <div className="offcanvas-body">
           <ul className="list-group">
             {itensCarrinho.map((p, idx) => (
-              <SwipeItem p={p} idx={idx} key={idx} />
+              <li className="list-group-item d-flex align-items-center gap-2" key={idx}>
+                <img
+                  src={p.image_link_github}
+                  alt={p.modelo}
+                  style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 6 }}
+                />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600 }}>{p.marca} - {p.modelo}</div>
+                  <div style={{ fontSize: "0.9em", color: "#555" }}>
+                    Valor: {p["preço_venda"] || p["preco_atacado_fornecedor"]}
+                  </div>
+                  <div className="d-flex align-items-center gap-1 mt-1">
+                    <label style={{ fontSize: "0.85em" }}>Qtd:</label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={p.quantidade}
+                      onChange={e => atualizarItemCarrinho(idx, "quantidade", e.target.value)}
+                      style={{ width: 40, fontSize: "0.9em" }}
+                    />
+                    <label style={{ fontSize: "0.85em", marginLeft: "8px" }}>Numeração:</label>
+                    <select
+                      value={p.numeracao}
+                      onChange={e => atualizarItemCarrinho(idx, "numeracao", e.target.value)}
+                      style={{ width: 70, fontSize: "0.9em" }}
+                    >
+                      <option value="">Selecione</option>
+                      {gerarNumeracoes(p).map(n => (
+                        <option key={n} value={n}>{n}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <button
+                  className="btn btn-sm btn-danger"
+                  onClick={() => removeCarrinho(idx)} // remove item do carrinho
+                  title="Remover"
+                  style={{
+                    transition: "background 0.2s",
+                  }}
+                  onMouseDown={e => e.currentTarget.style.background = "#6c63ff"} // cor ao clicar
+                  onMouseUp={e => e.currentTarget.style.background = ""}
+                  onMouseLeave={e => e.currentTarget.style.background = ""}
+                >
+                  &times;
+                </button>
+              </li>
             ))}
           </ul>
           <div className="mt-3 fw-bold">
@@ -620,10 +463,10 @@ export default function CatalogoTenis() {
                 transition: "background 0.2s"
               }}
               onClick={() => {
-                setBotaoPedidoAtivo(true);
+                setBotaoPedidoAtivo(true); // ativa feedback visual
                 setTimeout(() => {
-                  setBotaoPedidoAtivo(false);
-                  enviarPedido();
+                  setBotaoPedidoAtivo(false); // desativa feedback
+                  enviarPedido(); // envia pedido
                 }, 200);
               }}
               disabled={itensCarrinho.length === 0}
@@ -636,7 +479,9 @@ export default function CatalogoTenis() {
     );
   }
 
+  // Menu lateral de marcas
   function MenuMarcas() {
+    // Lista única de marcas
     const marcas = [...new Set(produtos.map((p) => p.marca).filter(Boolean))];
     return (
       <div
@@ -659,7 +504,7 @@ export default function CatalogoTenis() {
             <li
               className={`list-group-item${marcaSelecionada === "" ? " active" : ""}`}
               style={{ cursor: "pointer", transition: "background 0.2s" }}
-              onClick={() => { setMarcaSelecionada(""); setMenuOpen(false); }}
+              onClick={() => { setMarcaSelecionada(""); setMenuOpen(false); }} // mostra todas as marcas
               onMouseDown={e => e.currentTarget.style.background = "#ede7f6"}
               onMouseUp={e => e.currentTarget.style.background = ""}
               onMouseLeave={e => e.currentTarget.style.background = ""}
@@ -671,7 +516,7 @@ export default function CatalogoTenis() {
                 key={marca}
                 className={`list-group-item${marcaSelecionada === marca ? " active" : ""}`}
                 style={{ cursor: "pointer", transition: "background 0.2s" }}
-                onClick={() => { setMarcaSelecionada(marca); setMenuOpen(false); }}
+                onClick={() => { setMarcaSelecionada(marca); setMenuOpen(false); }} // filtra pela marca
                 onMouseDown={e => e.currentTarget.style.background = "#ede7f6"}
                 onMouseUp={e => e.currentTarget.style.background = ""}
                 onMouseLeave={e => e.currentTarget.style.background = ""}
@@ -685,6 +530,7 @@ export default function CatalogoTenis() {
     );
   }
 
+  // Filtro dos produtos para exibição
   const termo = busca.toLowerCase();
   const filtrados = produtos.filter((p) => {
     const valor = p["preço_venda"] || p["preco_atacado_fornecedor"] || "0";
@@ -701,11 +547,15 @@ export default function CatalogoTenis() {
     );
   });
 
+  // Renderização principal do catálogo
   return (
     <div className="container py-4">
+      {/* Modal de imagem ampliada */}
       <ModalImagem />
+      {/* Barra superior fixa com logo, menu e sacola */}
       <div className="sticky-top bg-white d-flex align-items-center justify-content-between px-2"
         style={{height: 72, zIndex: 1100, borderBottom: "1px solid #eee"}}>
+        {/* Logo */}
         <img
           src="/Logo.png"
           alt="Logo"
@@ -718,15 +568,16 @@ export default function CatalogoTenis() {
             display: "block"
           }}
         />
+        {/* Sacola e menu hamburguer */}
         <div className="d-flex align-items-center gap-3">
+          {/* Sacola */}
           <button
             className="btn btn-link p-0 position-relative"
             style={{height: 44, transition: "background 0.2s"}}
-            onClick={() => setDrawerOpen(true)}
-            onMouseDown={e => e.currentTarget.style.background = "#ede7f6"}
+            onClick={() => setDrawerOpen(true)} // abre carrinho lateral
+            onMouseDown={e => e.currentTarget.style.background = "#ede7f6"} // cor ao clicar
             onMouseUp={e => e.currentTarget.style.background = ""}
             onMouseLeave={e => e.currentTarget.style.background = ""}
-            title="Carrinho"
           >
             <i className="bi bi-bag" style={{fontSize: "2rem"}}></i>
             {carrinho.length > 0 && (
@@ -735,10 +586,11 @@ export default function CatalogoTenis() {
               </span>
             )}
           </button>
+          {/* Menu hamburguer */}
           <button
             className="btn btn-link p-0"
             style={{height: 44, transition: "background 0.2s"}}
-            onClick={() => setMenuOpen(true)}
+            onClick={() => setMenuOpen(true)} // abre menu lateral
             onMouseDown={e => e.currentTarget.style.background = "#ede7f6"}
             onMouseUp={e => e.currentTarget.style.background = ""}
             onMouseLeave={e => e.currentTarget.style.background = ""}
@@ -747,15 +599,17 @@ export default function CatalogoTenis() {
           </button>
         </div>
       </div>
+      {/* Barra de pesquisa fixa com caixinha de marca */}
       <div className="barra-pesquisa-sticky py-2 sticky-top bg-white" style={{ zIndex: 1200 }}>
         <div className="input-group">
+          {/* Botão da lupa clicável */}
           <button
             className="input-group-text"
             id="search-icon"
             style={{height: 40, border: "none", background: "transparent", cursor: "pointer", transition: "background 0.2s"}}
             type="button"
             onClick={() => {
-              document.getElementById("input-busca-tenis")?.focus();
+              document.getElementById("input-busca-tenis")?.focus(); // foca no input
             }}
             tabIndex={0}
             aria-label="Buscar"
@@ -771,7 +625,7 @@ export default function CatalogoTenis() {
             id="input-busca-tenis"
             placeholder="Busca"
             value={busca}
-            onChange={e => setBusca(e.target.value)}
+            onChange={e => setBusca(e.target.value)} // atualiza busca
             aria-label="Buscar"
             aria-describedby="search-icon"
             style={{height: 40}}
@@ -783,11 +637,13 @@ export default function CatalogoTenis() {
             }}
           />
         </div>
+        {/* Mensagem de erro se não encontrar produto */}
         {produtos.length > 0 && filtrados.length === 0 && busca !== "" && (
           <div className="text-danger mt-2" style={{fontWeight: 500, fontSize: '1rem'}}>
             Item não encontrado
           </div>
         )}
+        {/* Caixinha de filtro de marca fixa junto da barra de busca */}
         {marcaSelecionada && (
           <div
             style={{
@@ -806,7 +662,7 @@ export default function CatalogoTenis() {
           >
             <span>{marcaSelecionada}</span>
             <button
-              onClick={() => setMarcaSelecionada("")}
+              onClick={() => setMarcaSelecionada("")} // remove filtro de marca
               style={{
                 marginLeft: 10,
                 background: "transparent",
@@ -829,8 +685,11 @@ export default function CatalogoTenis() {
           </div>
         )}
       </div>
+      {/* Carrinho lateral */}
       <Carrinho />
+      {/* Menu lateral de marcas */}
       <MenuMarcas />
+      {/* Fundo escurecido do carrinho/menu */}
       {(drawerOpen || menuOpen) && (
         <div
           className="offcanvas-backdrop fade show"
@@ -841,11 +700,12 @@ export default function CatalogoTenis() {
             top: 0, left: 0, width: "100vw", height: "100vh"
           }}
           onClick={() => {
-            setDrawerOpen(false);
-            setMenuOpen(false);
+            setDrawerOpen(false); // fecha carrinho
+            setMenuOpen(false); // fecha menu
           }}
         ></div>
       )}
+      {/* Cards dos produtos */}
       <div className="row g-2 justify-content-center">
         {ultimosExibidos.map((p, idx) => (
           <div
@@ -856,23 +716,53 @@ export default function CatalogoTenis() {
             <div
               className="card h-100 shadow-sm w-100 position-relative card-hover"
               onClick={() => {
-                setTenisModal(p);
+                setTenisModal(p); // abre modal com produto clicado
                 setModalAberto(true);
-                setModalIndex(0);
+                setModalIndex(0); // começa sempre na primeira imagem
               }}
               style={{
                 transition: "background 0.1s"
               }}
-              onMouseDown={e => e.currentTarget.style.background = "#8e73c0ff"}
+              onMouseDown={e => e.currentTarget.style.background = "#8e73c0ff"} // cor ao clicar no card
               onMouseUp={e => e.currentTarget.style.background = ""}
               onMouseLeave={e => e.currentTarget.style.background = ""}
             >
+              {/* Botão de adicionar ao carrinho */}
+             <div
+              className="sacola-circulo"
+              title="Adicionar ao Carrinho"
+              onClick={e => {
+                e.stopPropagation(); // impede abrir modal ao clicar na sacola
+                addCarrinho(p); // adiciona ao carrinho
+                // Remove a cor após um pequeno delay para garantir que o clique/touch não mantenha a cor
+                setTimeout(() => {
+                  if (e.currentTarget) e.currentTarget.style.background = ""; // sempre verifique se existe!
+                }, 10); // tempo em ms, ajuste conforme desejar
+              }}
+              style={{
+                transition: "background 0.2s"
+              }}
+              onMouseDown={e => e.currentTarget.style.background = "#8e73c0ff"} // cor ao clicar desktop
+              onMouseUp={e => e.currentTarget.style.background = ""}
+              onMouseLeave={e => e.currentTarget.style.background = ""}
+              onTouchStart={e => e.currentTarget.style.background = "#8e73c0ff"} // cor ao tocar mobile
+              onTouchEnd={e => setTimeout(() => {
+                if (e.currentTarget) e.currentTarget.style.background = "";
+              }, 10)}
+              onTouchCancel={e => {
+                if (e.currentTarget) e.currentTarget.style.background = "";
+              }}
+            >
+              <i className="bi bi-bag"></i>
+            </div>
+              {/* Imagem do card */}
               <img
                 src={p.image_link_github}
                 className="card-img-top"
                 alt={p.modelo}
                 style={{ height: 210, objectFit: "cover" }}
               />
+              {/* Informações do card */}
               <div className="card-body d-flex flex-column">
                 <div className="fw-semibold">{p.modelo}</div>
                 <div className="text-muted mb-2">{p.marca}</div>
@@ -885,3 +775,16 @@ export default function CatalogoTenis() {
     </div>
   );
 }
+
+/*
+  =========================
+  DICAS DE AJUSTE:
+  =========================
+  - Para mudar a cor do clique/touch nas sacolinhas, altere o valor em onMouseDown/onTouchStart.
+  - Para mudar o tempo do efeito, altere o valor do setTimeout (em ms).
+  - Para mudar a transição, altere o valor de "transition" no style.
+  - Sempre cheque se e.currentTarget existe antes de acessar style.
+  - Para ajustar o layout, altere os estilos inline ou classes CSS.
+  - Para mudar textos, altere diretamente no JSX.
+  - Para mudar a lógica de filtro, ajuste o useEffect e o filtro dos produtos.
+*/
