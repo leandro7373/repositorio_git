@@ -39,7 +39,15 @@ export default function CatalogoTenis() {
   const [ultimosExibidos, setUltimosExibidos] = useState([]);
   const isFirstRender = useRef(true);
   const [itensCarrinho, setItensCarrinho] = useState([]);
+  const [selecionados, setSelecionados] = useState([]);
 
+  function toggleSelecionado(idx) {
+    setSelecionados(sel =>
+      sel.includes(idx)
+        ? sel.filter(i => i !== idx)
+        : [...sel, idx]
+    );
+  }
   useEffect(() => {
     fetchCSV(CSV_URL, (data) => {
       setProdutos(data);
@@ -154,127 +162,40 @@ export default function CatalogoTenis() {
 
     return (
       <>
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.7)",
-            zIndex: 3000,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center"
-          }}
-          onClick={() => setModalAberto(false)}
-        >
-          <div
-            style={{
-              background: "#fff",
-              borderRadius: 12,
-              boxShadow: "0 8px 32px rgba(0,0,0,0.25)",
-              padding: 24,
-              maxWidth: "90vw",
-              maxHeight: "90vh",
-              overflowY: "auto",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              position: "relative"
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div
-              style={{
-                width: "100%",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                position: "relative"
-              }}
-            >
+        <div className="modal-overlay" onClick={() => setModalAberto(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-img-container">
               <img
                 src={imagens[modalIndex]}
                 alt={tenisModal.modelo}
                 className="modal-img-popup"
-                style={{
-                  maxWidth: "80vw",
-                  maxHeight: "60vh",
-                  borderRadius: 20,
-                  marginBottom: 20,
-                  objectFit: "contain",
-                  cursor: "pointer"
-                }}
                 onClick={() => setModalIndex((modalIndex + 1) % imagens.length)}
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}
               />
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  gap: 10,
-                  marginBottom: 20,
-                }}
-              >
+              <div className="modal-img-dots">
                 {imagens.map((_, idx) => (
                   <span
                     key={idx}
+                    className={`modal-img-dot${modalIndex === idx ? " active" : ""}`}
                     onClick={() => setModalIndex(idx)}
-                    style={{
-                      width: 10,
-                      height: 10,
-                      borderRadius: "50%",
-                      background: modalIndex === idx ? "#3a2e4f" : "#ede7f6",
-                      border: modalIndex === idx ? "2px solid #3a2e4f" : "2px solid #ede7f6",
-                      display: "inline-block",
-                      cursor: "pointer",
-                      transition: "background 0.2s, border 0.2s"
-                    }}
                   />
                 ))}
               </div>
             </div>
-            <div style={{ fontWeight: 600, fontSize: "1.1rem", marginBottom: 20 }}>
+            <div className="modal-title">
               {tenisModal.marca} - {tenisModal.modelo}
             </div>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(4, 1fr)",
-                gap: 12,
-                marginBottom: 20,
-                justifyContent: "center"
-              }}
-            >
+            <div className="modal-numeracoes">
               {todosNumeros.map(num => {
                 const disponivel = disponiveis.includes(num);
                 const ativo = numeracaoSelecionada === num;
                 return (
                   <button
                     key={num}
+                    className={`modal-num-btn${ativo ? " active" : ""}${!disponivel ? " disabled" : ""}`}
                     onClick={() => disponivel && setNumeracaoSelecionada(num)}
                     disabled={!disponivel}
-                    style={{
-                      width: 54,
-                      height: 54,
-                      borderRadius: 12,
-                      border: disponivel
-                        ? (ativo ? "2.5px solid #3a2e4f" : "1.5px solid #ccc")
-                        : "1.5px solid #bbb",
-                      background: ativo
-                        ? "#d1c4e9"
-                        : disponivel
-                          ? "#fff"
-                          : "#f3f0f7",
-                      fontWeight: 600,
-                      fontSize: "1.3rem",
-                      color: disponivel ? "#3a2e4f" : "#aaa",
-                      cursor: disponivel ? "pointer" : "not-allowed",
-                      position: "relative",
-                      transition: "border 0.2s, background 0.2s",
-                      userSelect: "none",
-                      touchAction: "manipulation"
-                    }}
                     tabIndex={disponivel ? 0 : -1}
                   >
                     {num}
@@ -283,45 +204,15 @@ export default function CatalogoTenis() {
               })}
             </div>
             <button
+              className={`modal-add-carrinho${botaoCarrinhoAtivo ? " added" : ""}`}
               onClick={adicionarAoCarrinhoModal}
-              style={{
-                minWidth: 180,
-                padding: "12px 24px",
-                background: botaoCarrinhoAtivo ? "#6c63ff" : "#3a2e4f",
-                color: "#fff",
-                border: "none",
-                borderRadius: 8,
-                fontWeight: 600,
-                fontSize: "1.1rem",
-                marginBottom: 8,
-                cursor: "pointer",
-                boxShadow: botaoCarrinhoAtivo
-                  ? "0 2px 16px rgba(108,99,255,0.18)"
-                  : "0 2px 8px rgba(58,46,79,0.08)",
-                transition: "background 0.2s, box-shadow 0.2s"
-              }}
             >
               {botaoCarrinhoAtivo ? "Adicionado!" : "Adicionar ao Carrinho"}
             </button>
             <button
+              className="modal-close"
               onClick={() => setModalAberto(false)}
-              style={{
-                position: "absolute",
-                top: 12,
-                right: 12,
-                background: "transparent",
-                border: "none",
-                fontSize: "2rem",
-                color: "#222",
-                cursor: "pointer",
-                zIndex: 3100,
-                lineHeight: 1,
-                transition: "color 0.2s"
-              }}
               aria-label="Fechar"
-              onMouseDown={e => e.currentTarget.style.color = "#6c63ff"}
-              onMouseUp={e => e.currentTarget.style.color = "#222"}
-              onMouseLeave={e => e.currentTarget.style.color = "#222"}
             >
               &times;
             </button>
@@ -332,13 +223,17 @@ export default function CatalogoTenis() {
   }
 
   function Carrinho() {
-    const total = itensCarrinho.reduce((acc, p) => {
+    // Calcule o total apenas dos itens selecionados
+    const itensSelecionados = itensCarrinho.filter((_, idx) => selecionados.includes(idx));
+    const total = itensSelecionados.reduce((acc, p) => {
       const valor = p["preço_venda"] || p["preco_atacado_fornecedor"] || "0";
       return acc + Number(valor.replace("R$", "").replace(",", ".")) * (Number(p.quantidade) || 1);
     }, 0);
 
     function enviarPedido() {
-      const mensagem = itensCarrinho.map((p, idx) => (
+      // Filtra apenas os itens selecionados
+      const itensParaEnviar = itensCarrinho.filter((_, idx) => selecionados.includes(idx));
+      const mensagem = itensParaEnviar.map((p, idx) => (
         `• Código: ${p["cód.tenis"] || "-"}\n` +
         `Marca: ${p.marca}\n` +
         `Modelo: ${p.modelo}\n` +
@@ -354,230 +249,48 @@ export default function CatalogoTenis() {
     const [botaoPedidoAtivo, setBotaoPedidoAtivo] = useState(false);
 
     function SwipeItem({ p, idx }) {
-      const [cardOffset, setCardOffset] = useState(0);
-      const [autoFill, setAutoFill] = useState(false);
-      const touchStartX = useRef(null);
-
-      const SWIPE_TRIGGER = 20;
-      const SWIPE_MAX = 120;
-
-      const DELETE_RECT_WIDTH = 90;
-      const DELETE_RECT_HEIGHT = 120;
-      const DELETE_RECT_RIGHT = 0;
-      const DELETE_RECT_BG = "#e9716fff";
-      const DELETE_RECT_TEXT = "Deletar";
-      const DELETE_RECT_TEXT_COLOR = "#fff";
-      const DELETE_RECT_FONT_SIZE = "1.1rem";
-
-      function handleTouchStart(e) {
-        if (window.innerWidth > 576) return;
-        touchStartX.current = e.touches[0].clientX;
-        setAutoFill(false);
-      }
-
-      function handleTouchMove(e) {
-        if (window.innerWidth > 576) return;
-        if (touchStartX.current === null) return;
-        const deltaX = e.touches[0].clientX - touchStartX.current;
-        setCardOffset(Math.min(deltaX, SWIPE_MAX, 0));
-      }
-
-      function handleTouchEnd(e) {
-        if (window.innerWidth > 576) return;
-        if (cardOffset <= -SWIPE_TRIGGER) {
-          setAutoFill(true);
-          setCardOffset(-SWIPE_MAX);
-        } else if (cardOffset >= SWIPE_TRIGGER) {
-          setAutoFill(true);
-          setCardOffset(SWIPE_MAX);
-        } else {
-          setCardOffset(0);
-          setAutoFill(false);
-        }
-        touchStartX.current = null;
-      }
-
-      const deleteRectVisible = Math.min(Math.abs(cardOffset), DELETE_RECT_WIDTH);
-
       return (
-        <li
-          className="list-group-item swipe-carrinho"
-          key={idx}
-          style={{
-            position: "relative",
-            overflow: "hidden",
-            touchAction: "pan-y"
-          }}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-        >
-          {/* Retângulo vermelho "Deletar" atrás do card */}
-          <div
-            style={{
-              position: "absolute",
-              top: "50%",
-              right: `${DELETE_RECT_RIGHT}px`,
-              width: `${DELETE_RECT_WIDTH}px`,
-              height: `${DELETE_RECT_HEIGHT}px`,
-              background: DELETE_RECT_BG,
-              color: DELETE_RECT_TEXT_COLOR,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: 0,
-              fontWeight: 700,
-              fontSize: DELETE_RECT_FONT_SIZE,
-              transform: "translateY(-50%)",
-              zIndex: 1,
-              overflow: "hidden"
-            }}
-            onClick={() => removeCarrinho(idx)}
-          >
-            <div
-              style={{
-                width: `${deleteRectVisible}px`,
-                height: "100%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                transition: "none",
-                background: DELETE_RECT_BG,
-                color: DELETE_RECT_TEXT_COLOR,
-                fontWeight: 700,
-                fontSize: DELETE_RECT_FONT_SIZE,
-                borderRadius: 0
-              }}
-            >
-              {DELETE_RECT_TEXT}
+        <li className="carrinho-item" key={idx}>
+          <input
+            type="checkbox"
+            checked={selecionados.includes(idx)}
+            onChange={() => toggleSelecionado(idx)}
+            style={{ marginRight: 12, width: 20, height: 20 }}
+          />
+          <img
+            src={p.image_link_github}
+            alt={p.modelo}
+            className="carrinho-img"
+          />
+          <div className="carrinho-info">
+            <div className="carrinho-marca">{p.marca}</div>
+            <div className="carrinho-modelo">{p.modelo}</div>
+            <div className="carrinho-numeracao">
+              Tam: <span className="carrinho-numeracao-num">{p.numeracao || "-"}</span>
             </div>
-          </div>
-          {/* Card do item do carrinho */}
-          <div
-            className="swipe-content"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              transform: `translateX(${cardOffset}px)`,
-              transition: cardOffset === 0 ? "transform 0.25s cubic-bezier(.4,0,.2,1)" : "none",
-              willChange: "transform",
-              zIndex: 2,
-              position: "relative",
-              background: "#fff",
-              borderRadius: 0,
-              minHeight: "120px",
-              minWidth: "360px",
-              boxSizing: "border-box"
-            }}
-          >
-            <img
-              src={p.image_link_github}
-              alt={p.modelo}
-              style={{ width: 120, height: 120, objectFit: "cover", borderRadius: 8, marginRight: 10 }}
-            />
-            <div style={{ flex: 1 }}>
-              {/* MARCA acima do modelo */}
-              <div
-                className="carrinho-marca"
-                style={{
-                  fontSize: "1rem",        // <-- Altere aqui o tamanho da marca
-                  color: "#1976d2",        // <-- Altere aqui a cor da marca
-                  fontWeight: 600,
-                  marginBottom: "2px"
+            <div className="carrinho-valor">
+              {p["preço_venda"] || p["preco_atacado_fornecedor"]}
+            </div>
+            <div className="carrinho-qtd-box">
+              <button
+                type="button"
+                className="carrinho-qtd-btn"
+                onClick={() => {
+                  if (Number(p.quantidade) > 1) {
+                    atualizarItemCarrinho(idx, "quantidade", Number(p.quantidade) - 1);
+                  }
                 }}
-              >
-                {p.marca}
-              </div>
-              {/* MODELO abaixo da marca */}
-              <div
-                className="carrinho-modelo"
-                style={{
-                  fontSize: "1.2rem",      // <-- Altere aqui o tamanho do modelo
-                  color: "#222",           // <-- Altere aqui a cor do modelo
-                  fontWeight: 700,
-                  marginBottom: "2px"
+                aria-label="Diminuir quantidade"
+              >-</button>
+              <span className="carrinho-qtd-num">{p.quantidade}</span>
+              <button
+                type="button"
+                className="carrinho-qtd-btn"
+                onClick={() => {
+                  atualizarItemCarrinho(idx, "quantidade", Number(p.quantidade) + 1);
                 }}
-              >
-                {p.modelo}
-              </div>
-              {/* TAMANHO */}
-              <div
-                className="carrinho-numeracao"
-                style={{
-                  fontSize: "0.95rem",
-                  color: "#555",
-                  marginBottom: "2px"
-                }}
-              >
-                Tam: <span style={{ fontWeight: 500 }}>{p.numeracao || "-"}</span>
-              </div>
-              {/* VALOR */}
-              <div
-                className="carrinho-valor"
-                style={{
-                  fontSize: "1rem",
-                  color: "#388e3c",
-                  fontWeight: "bold",
-                  marginBottom: "2px"
-                }}
-              >
-                {p["preço_venda"] || p["preco_atacado_fornecedor"]}
-              </div>
-              {/* Quantidade customizada */}
-              <div className="d-flex align-items-center gap-2 mt-1">
-                {/* Botão de menos */}
-                <button
-                  type="button"
-                  style={{
-                    width: 32,
-                    height: 32,
-                    border: "1px solid #ccc",
-                    background: "#f3f3f3",
-                    borderRadius: 6,
-                    fontSize: "1.2rem",
-                    fontWeight: "bold",
-                    color: "#222",
-                    cursor: "pointer"
-                  }}
-                  onClick={() => {
-                    if (Number(p.quantidade) > 1) {
-                      atualizarItemCarrinho(idx, "quantidade", Number(p.quantidade) - 1);
-                    }
-                  }}
-                  aria-label="Diminuir quantidade"
-                >-</button>
-                {/* Quantidade atual */}
-                <span
-                  style={{
-                    minWidth: 24,
-                    textAlign: "center",
-                    fontSize: "1.1rem",
-                    fontWeight: 600,
-                    color: "#222"
-                  }}
-                >
-                  {p.quantidade}
-                </span>
-                {/* Botão de mais */}
-                <button
-                  type="button"
-                  style={{
-                    width: 32,
-                    height: 32,
-                    border: "1px solid #ccc",
-                    background: "#f3f3f3",
-                    borderRadius: 6,
-                    fontSize: "1.2rem",
-                    fontWeight: "bold",
-                    color: "#222",
-                    cursor: "pointer"
-                  }}
-                  onClick={() => {
-                    atualizarItemCarrinho(idx, "quantidade", Number(p.quantidade) + 1);
-                  }}
-                  aria-label="Aumentar quantidade"
-                >+</button>
-              </div>
+                aria-label="Aumentar quantidade"
+              >+</button>
             </div>
           </div>
         </li>
@@ -585,17 +298,7 @@ export default function CatalogoTenis() {
     }
 
     return (
-      <div
-        className={`offcanvas offcanvas-start${drawerOpen ? " show" : ""}`}
-        tabIndex="-1"
-        style={{
-          visibility: drawerOpen ? "visible" : "hidden",
-          background: "#fff",
-          zIndex: 2000,
-          width: "340px",
-          maxWidth: "60vw"
-        }}
-      >
+      <div className={`offcanvas offcanvas-start${drawerOpen ? " show" : ""}`} tabIndex="-1">
         <div className="offcanvas-header">
           <h5 className="offcanvas-title">Carrinho</h5>
           <button type="button" className="btn-close" onClick={() => setDrawerOpen(false)}></button>
@@ -609,16 +312,26 @@ export default function CatalogoTenis() {
           <div className="mt-3 fw-bold">
             Total: R$ {total.toFixed(2)}
           </div>
-          <div className="d-flex justify-content-center align-items-center" style={{ minHeight: 80 }}>
-            <button
-              className="btn btn-dark"
-              style={{
-                minWidth: 180,
-                fontWeight: 600,
-                fontSize: "1.1rem",
-                background: botaoPedidoAtivo ? "#6c63ff" : "",
-                transition: "background 0.2s"
+          <div className="d-flex justify-content-center align-items-center carrinho-btn-area" style={{gap: 12}}>
+            {/* Checkbox "Todos" */}
+            <input
+              type="checkbox"
+              checked={itensCarrinho.length > 0 && selecionados.length === itensCarrinho.length}
+              onChange={() => {
+                if (selecionados.length === itensCarrinho.length) {
+                  setSelecionados([]);
+                } else {
+                  setSelecionados(itensCarrinho.map((_, idx) => idx));
+                }
               }}
+              style={{ width: 20, height: 20, marginRight: 6 }}
+              id="selecionar-todos"
+            />
+            <label htmlFor="selecionar-todos" style={{marginRight: 16, marginBottom: 0, userSelect: "none", cursor: "pointer"}}>
+              Todos
+            </label>
+            <button
+              className={`btn btn-dark btn-carrinho-enviar${botaoPedidoAtivo ? " enviando" : ""}`}
               onClick={() => {
                 setBotaoPedidoAtivo(true);
                 setTimeout(() => {
@@ -626,7 +339,7 @@ export default function CatalogoTenis() {
                   enviarPedido();
                 }, 200);
               }}
-              disabled={itensCarrinho.length === 0}
+              disabled={itensSelecionados.length === 0}
             >
               {botaoPedidoAtivo ? "Enviando..." : "Enviar Pedido"}
             </button>
@@ -639,17 +352,7 @@ export default function CatalogoTenis() {
   function MenuMarcas() {
     const marcas = [...new Set(produtos.map((p) => p.marca).filter(Boolean))];
     return (
-      <div
-        className={`offcanvas offcanvas-end${menuOpen ? " show" : ""}`}
-        tabIndex="-1"
-        style={{
-          visibility: menuOpen ? "visible" : "hidden",
-          background: "#fff",
-          zIndex: 2000,
-          width: "340px",
-          maxWidth: "60vw"
-        }}
-      >
+      <div className={`offcanvas offcanvas-end${menuOpen ? " show" : ""}`} tabIndex="-1">
         <div className="offcanvas-header">
           <h5 className="offcanvas-title">Marcas</h5>
           <button type="button" className="btn-close" onClick={() => setMenuOpen(false)}></button>
@@ -657,24 +360,16 @@ export default function CatalogoTenis() {
         <div className="offcanvas-body">
           <ul className="list-group">
             <li
-              className={`list-group-item${marcaSelecionada === "" ? " active" : ""}`}
-              style={{ cursor: "pointer", transition: "background 0.2s" }}
+              className={`list-group-item${marcaSelecionada === "" ? " active" : ""} menu-marca-item`}
               onClick={() => { setMarcaSelecionada(""); setMenuOpen(false); }}
-              onMouseDown={e => e.currentTarget.style.background = "#ede7f6"}
-              onMouseUp={e => e.currentTarget.style.background = ""}
-              onMouseLeave={e => e.currentTarget.style.background = ""}
             >
               Todas as marcas
             </li>
             {marcas.map((marca) => (
               <li
                 key={marca}
-                className={`list-group-item${marcaSelecionada === marca ? " active" : ""}`}
-                style={{ cursor: "pointer", transition: "background 0.2s" }}
+                className={`list-group-item${marcaSelecionada === marca ? " active" : ""} menu-marca-item`}
                 onClick={() => { setMarcaSelecionada(marca); setMenuOpen(false); }}
-                onMouseDown={e => e.currentTarget.style.background = "#ede7f6"}
-                onMouseUp={e => e.currentTarget.style.background = ""}
-                onMouseLeave={e => e.currentTarget.style.background = ""}
               >
                 {marca}
               </li>
@@ -704,31 +399,19 @@ export default function CatalogoTenis() {
   return (
     <div className="container py-4">
       <ModalImagem />
-      <div className="sticky-top bg-white d-flex align-items-center justify-content-between px-2"
-        style={{height: 72, zIndex: 1100, borderBottom: "1px solid #eee"}}>
+      <div className="bg-white d-flex align-items-center justify-content-between px-2 header-bar">
         <img
           src="/Logo.png"
           alt="Logo"
-          style={{
-            height: 50,
-            width: "auto",
-            objectFit: "contain",
-            marginTop: 10,
-            marginBottom: 10,
-            display: "block"
-          }}
+          className="logo-img"
         />
         <div className="d-flex align-items-center gap-3">
           <button
-            className="btn btn-link p-0 position-relative"
-            style={{height: 44, transition: "background 0.2s"}}
+            className="btn btn-link p-0 position-relative btn-carrinho"
             onClick={() => setDrawerOpen(true)}
-            onMouseDown={e => e.currentTarget.style.background = "#ede7f6"}
-            onMouseUp={e => e.currentTarget.style.background = ""}
-            onMouseLeave={e => e.currentTarget.style.background = ""}
             title="Carrinho"
           >
-            <i className="bi bi-bag" style={{fontSize: "2rem"}}></i>
+            <i className="bi bi-bag carrinho-icone"></i>
             {carrinho.length > 0 && (
               <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
                 {carrinho.length}
@@ -736,32 +419,24 @@ export default function CatalogoTenis() {
             )}
           </button>
           <button
-            className="btn btn-link p-0"
-            style={{height: 44, transition: "background 0.2s"}}
+            className="btn btn-link p-0 btn-menu"
             onClick={() => setMenuOpen(true)}
-            onMouseDown={e => e.currentTarget.style.background = "#ede7f6"}
-            onMouseUp={e => e.currentTarget.style.background = ""}
-            onMouseLeave={e => e.currentTarget.style.background = ""}
           >
-            <i className="bi bi-list" style={{fontSize: "2.2rem"}}></i>
+            <i className="bi bi-list menu-icone"></i>
           </button>
         </div>
       </div>
-      <div className="barra-pesquisa-sticky py-2 sticky-top bg-white" style={{ zIndex: 1200 }}>
+      <div className="barra-pesquisa-sticky py-2  bg-white barra-pesquisa">
         <div className="input-group">
           <button
-            className="input-group-text"
+            className="input-group-text btn-search"
             id="search-icon"
-            style={{height: 40, border: "none", background: "transparent", cursor: "pointer", transition: "background 0.2s"}}
             type="button"
             onClick={() => {
               document.getElementById("input-busca-tenis")?.focus();
             }}
             tabIndex={0}
             aria-label="Buscar"
-            onMouseDown={e => e.currentTarget.style.background = "#ede7f6"}
-            onMouseUp={e => e.currentTarget.style.background = "transparent"}
-            onMouseLeave={e => e.currentTarget.style.background = "transparent"}
           >
             <i className="bi bi-search"></i>
           </button>
@@ -774,55 +449,21 @@ export default function CatalogoTenis() {
             onChange={e => setBusca(e.target.value)}
             aria-label="Buscar"
             aria-describedby="search-icon"
-            style={{height: 40}}
-            onKeyDown={e => {
-              if (e.key === "Enter") {
-                e.target.blur();
-                e.target.focus();
-              }
-            }}
           />
         </div>
         {produtos.length > 0 && filtrados.length === 0 && busca !== "" && (
-          <div className="text-danger mt-2" style={{fontWeight: 500, fontSize: '1rem'}}>
+          <div className="text-danger mt-2 busca-nao-encontrada">
             Item não encontrado
           </div>
         )}
         {marcaSelecionada && (
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              background: "#ede7f6",
-              color: "#3a2e4f",
-              borderRadius: 20,
-              padding: "6px 16px",
-              fontWeight: 600,
-              fontSize: "1rem",
-              margin: "12px 0",
-              boxShadow: "0 2px 8px rgba(58,46,79,0.08)",
-              transition: "background 0.2s"
-            }}
-          >
+          <div className="marca-filtro-ativa">
             <span>{marcaSelecionada}</span>
             <button
+              className="marca-filtro-remover"
               onClick={() => setMarcaSelecionada("")}
-              style={{
-                marginLeft: 10,
-                background: "transparent",
-                border: "none",
-                color: "#3a2e4f",
-                fontSize: "1.2rem",
-                cursor: "pointer",
-                fontWeight: 700,
-                lineHeight: 1,
-                transition: "background 0.2s"
-              }}
               aria-label="Remover filtro de marca"
               title="Remover filtro de marca"
-              onMouseDown={e => e.currentTarget.style.background = "#d1c4e9"}
-              onMouseUp={e => e.currentTarget.style.background = "transparent"}
-              onMouseLeave={e => e.currentTarget.style.background = "transparent"}
             >
               &times;
             </button>
@@ -834,49 +475,37 @@ export default function CatalogoTenis() {
       {(drawerOpen || menuOpen) && (
         <div
           className="offcanvas-backdrop fade show"
-          style={{
-            zIndex: 1999,
-            background: "rgba(0,0,0,0.5)",
-            position: "fixed",
-            top: 0, left: 0, width: "100vw", height: "100vh"
-          }}
           onClick={() => {
             setDrawerOpen(false);
             setMenuOpen(false);
           }}
         ></div>
       )}
-      <div className="row g-2 justify-content-center">
+      <div className="main-content"></div>
+      <div className="row g-2 justify-content-center cards-grid-limit">
         {ultimosExibidos.map((p, idx) => (
-          <div
-            className="col-12 col-sm-6 col-md-3 card-col"
-            key={idx}
-            style={{ display: "flex" }}
-          >
+          <div className="col-6 col-sm-6 col-md-3 card-col" key={idx}>
             <div
-              className="card h-100 shadow-sm w-100 position-relative card-hover"
+              className="card h-100 w-100 position-relative card-hover"
               onClick={() => {
                 setTenisModal(p);
                 setModalAberto(true);
                 setModalIndex(0);
               }}
-              style={{
-                transition: "background 0.1s"
-              }}
-              onMouseDown={e => e.currentTarget.style.background = "#8e73c0ff"}
-              onMouseUp={e => e.currentTarget.style.background = ""}
-              onMouseLeave={e => e.currentTarget.style.background = ""}
             >
               <img
                 src={p.image_link_github}
-                className="card-img-top"
+                className="card-img-top card-img-custom"
                 alt={p.modelo}
-                style={{ height: 210, objectFit: "cover" }}
               />
-              <div className="card-body d-flex flex-column">
-                <div className="fw-semibold">{p.modelo}</div>
-                <div className="text-muted mb-2">{p.marca}</div>
-                <div className="fw-bold fs-5 mb-1 preco-tenis">{p["preço_venda"] || p["preco_atacado_fornecedor"]}</div>
+              <div className="card-body card-info-bg d-flex flex-column justify-content-between">
+                <div>
+                  <h5 className="card-title fw-semibold card-modelo mb-1">{p.modelo}</h5>
+                  <p className="card-text text-muted card-marca mb-2">{p.marca}</p>
+                </div>
+                <div>
+                  <span className="fw-bold fs-5 preco-tenis">{p["preço_venda"] || p["preco_atacado_fornecedor"]}</span>
+                </div>
               </div>
             </div>
           </div>
