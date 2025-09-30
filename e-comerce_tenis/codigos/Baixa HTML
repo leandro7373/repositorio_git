@@ -1,0 +1,10 @@
+import requests
+
+url = "https://rickatacado.com/"
+headers = {"User-Agent": "Mozilla/5.0"}
+
+response = requests.get(url, headers=headers)
+with open("rickatacado_home.html", "w", encoding="utf-8") as f:
+    f.write(response.text)
+
+print("HTML salvo como rickatacado_home.html")

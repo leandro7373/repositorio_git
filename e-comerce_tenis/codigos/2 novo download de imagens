@@ -1,0 +1,97 @@
+import os
+import pandas as pd
+from datetime import datetime
+import aiohttp
+import asyncio
+from aiohttp import ClientSession
+from urllib.parse import urlparse
+import time
+import json
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CONFIG_PATH = os.path.join(BASE_DIR, "configuracoes", "configuração diretórios.json")
+with open(CONFIG_PATH, encoding="utf-8") as f:
+    cfg = json.load(f)
+
+CSV_DIR = os.path.join(BASE_DIR, cfg["CSV_DIR"])
+IMAGENS_DIR = os.path.join(BASE_DIR, cfg["IMAGENS_ORIGINAIS_DIR"])
+
+# Data de referência
+data_str = datetime.now().strftime("%Y-%m-%d")
+
+# Caminho correto do CSV
+csv_path = os.path.join(CSV_DIR, f"tenis_dados_{data_str}.csv")
+
+# Pasta de destino das imagens
+dest_dir = os.path.join(IMAGENS_DIR, f"originais_{data_str}")
+os.makedirs(dest_dir, exist_ok=True)
+
+# Lê o CSV
+df = pd.read_csv(csv_path)
+
+# Inicializa as colunas de controle, se não existirem
+for col in ["imagem_local1", "imagem_local2", "url_baixada1", "url_baixada2"]:
+    if col not in df.columns:
+        df[col] = ""
+
+def gerar_lista_downloads(df):
+    lista = []
+    for idx, row in df.iterrows():
+        for i, col_link in enumerate(["link_imagem1", "link_imagem2"], start=1):
+            url = row.get(col_link)
+            col_local = f"imagem_local{i}"
+            col_url_baixada = f"url_baixada{i}"
+            url_baixada = row.get(col_url_baixada, "")
+            if pd.notna(url) and url.strip() and (not row.get(col_local) or url != url_baixada):
+                ext = os.path.splitext(urlparse(url).path)[-1]
+                if not ext or len(ext) > 5:
+                    ext = ".jpg"
+                nome_arquivo = f"{row['modelo']}_{idx}_{col_link}{ext}"
+                nome_arquivo = "".join(c if c.isalnum() or c in "._-" else "_" for c in nome_arquivo)
+                lista.append((url, os.path.join(dest_dir, nome_arquivo), idx, col_local, nome_arquivo, col_url_baixada))
+    return lista
+
+# Função assíncrona para baixar uma imagem com tentativas
+async def baixar_imagem(session: ClientSession, url, caminho, idx, col, nome_arquivo, col_url_baixada, tentativas=1, espera=0):
+    for tentativa in range(1, tentativas + 1):
+        try:
+            async with session.get(url, timeout=30) as resp:
+                if resp.status == 200:
+                    with open(caminho, "wb") as f:
+                        f.write(await resp.read())
+                    df.at[idx, col] = nome_arquivo
+                    df.at[idx, col_url_baixada] = url
+                    print(f"Baixada: {caminho}")
+                    return True
+                else:
+                    print(f"Erro {resp.status} ao baixar {url} (tentativa {tentativa})")
+        except Exception as e:
+            print(f"Falha ao baixar {url} (tentativa {tentativa}): {e}")
+        if tentativa < tentativas:
+            await asyncio.sleep(espera)
+    return False
+
+async def baixar_todas(downloads, max_conexoes=8):
+    connector = aiohttp.TCPConnector(limit=max_conexoes)
+    async with aiohttp.ClientSession(connector=connector) as session:
+        tasks = [baixar_imagem(session, url, caminho, idx, col, nome_arquivo, col_url_baixada) for url, caminho, idx, col, nome_arquivo, col_url_baixada in downloads]
+        resultados = await asyncio.gather(*tasks)
+    return resultados
+
+if __name__ == "__main__":
+    max_rodadas = 5
+    rodada = 1
+    while rodada <= max_rodadas:
+        downloads = gerar_lista_downloads(df)
+        if not downloads:
+            break
+        print(f"\nRodada {rodada}: tentando baixar {len(downloads)} imagens para a pasta '{dest_dir}'...")
+        resultados = asyncio.run(baixar_todas(downloads))
+        df.to_csv(csv_path, index=False, encoding="utf-8-sig")
+        if all(resultados):
+            print("Todas as imagens baixadas com sucesso!")
+            break
+        print(f"Aguardando 10 segundos antes da próxima rodada para tentar novamente as imagens que faltaram...")
+        time.sleep(10)
+        rodada += 1
+    print("Download finalizado! CSV atualizado com nomes das imagens salvas.")

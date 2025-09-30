@@ -1,0 +1,44 @@
+import os
+import pandas as pd
+import json
+import glob
+
+# Carrega configuração de diretórios
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CONFIG_PATH = os.path.join(BASE_DIR, "configuracoes", "configuração diretórios.json")
+with open(CONFIG_PATH, encoding="utf-8") as f:
+    cfg = json.load(f)
+
+CSV_DIR = os.path.join(BASE_DIR, cfg["CSV_DIR"])
+IMAGENS_LIMPAS_DIR = os.path.join(BASE_DIR, cfg["IMAGENS_LIMPAS_DIR"])
+
+# Parâmetros do GitHub
+USUARIO_GITHUB = "leandro7373"
+REPOSITORIO_GITHUB = "repositorio_git"
+PASTA_GITHUB = "imagens_sem_codigo"  # Ajuste se necessário
+
+# Busca o CSV mais recente na pasta CSV_DIR
+csv_files = glob.glob(os.path.join(CSV_DIR, "tenis_dados_*.csv"))
+if not csv_files:
+    raise FileNotFoundError("Nenhum arquivo 'tenis_dados_*.csv' encontrado em dados/csv.")
+CSV_PATH = max(csv_files, key=os.path.getmtime)
+
+# Carrega o CSV
+df = pd.read_csv(CSV_PATH)
+df["image1_link_github"] = ""
+df["image2_link_github"] = ""
+
+# Para cada linha do CSV, gera o link bruto do GitHub para as imagens
+for idx, row in df.iterrows():
+    img1 = row.get("imagem_local1", "")
+    img2 = row.get("imagem_local2", "")
+    if img1:
+        link1 = f"https://raw.githubusercontent.com/{USUARIO_GITHUB}/{REPOSITORIO_GITHUB}/main/{PASTA_GITHUB}/{img1}"
+        df.at[idx, "image_link_github"] = link1
+    if img2:
+        link2 = f"https://raw.githubusercontent.com/{USUARIO_GITHUB}/{REPOSITORIO_GITHUB}/main/{PASTA_GITHUB}/{img2}"
+        df.at[idx, "image2_link_github"] = link2
+
+# Salva o CSV atualizado (mantendo o mesmo nome)
+df.to_csv(CSV_PATH, index=False, encoding="utf-8-sig")
+print(f"CSV atualizado em: {CSV_PATH}")

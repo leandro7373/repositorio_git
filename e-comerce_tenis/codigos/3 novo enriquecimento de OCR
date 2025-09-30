@@ -1,0 +1,183 @@
+import os
+import pandas as pd
+from PIL import Image, ImageEnhance
+import pytesseract
+import re
+import hashlib
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import glob
+import json
+
+# Corrige BASE_DIR para sempre ser a raiz do projeto
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CONFIG_PATH = os.path.join(BASE_DIR, "configuracoes", "configuração diretórios.json")
+
+# Carrega as configurações
+with open(CONFIG_PATH, encoding="utf-8") as f:
+    cfg = json.load(f)
+
+# Usa apenas o nome da pasta do projeto uma vez
+CSV_DIR = os.path.join(BASE_DIR, "dados", "csv")
+IMAGENS_DIR = os.path.join(BASE_DIR, "dados", "imagens")
+
+print("BASE_DIR:", BASE_DIR)
+print("CSV_DIR:", CSV_DIR)
+print("Procurando por:", os.path.join(CSV_DIR, "tenis_dados_*.csv"))
+
+# Busca o CSV mais recente
+csv_files = glob.glob(os.path.join(CSV_DIR, "tenis_dados_*.csv"))
+if not csv_files:
+    raise FileNotFoundError("Nenhum arquivo 'tenis_dados_*.csv' encontrado.")
+csv_path = max(csv_files, key=os.path.getmtime)
+print(f"Usando o arquivo CSV mais recente: {csv_path}")
+
+# Extrai a data do nome do CSV
+data_str = os.path.splitext(os.path.basename(csv_path))[0].split("_")[-1]
+imagens_dir = os.path.join(IMAGENS_DIR, f"originais_{data_str}")
+
+# Regex para extrair o código do texto OCR
+PATTERN = re.compile(r"\bR\s*[:\-]?\s*[\w\.]{2,20}(?:[-–][\w\.]{1,20}){0,6}\b", re.IGNORECASE)
+
+def extrair_codigo(texto):
+    """Extrai o código do texto OCR usando regex."""
+    if not texto:
+        return ""
+    texto = texto.replace("—", "-").replace("–", "-")
+    m = PATTERN.search(texto)
+    if m:
+        return m.group(0).strip()
+    # Fallback: pega qualquer bloco alfanumérico grande
+    m2 = re.search(r"\b[\w\-\.]{4,}\b", texto)
+    if m2:
+        return m2.group(0).strip()
+    return ""
+
+def hash_imagem(caminho):
+    """Calcula o hash MD5 do arquivo de imagem para detectar alterações."""
+    if not os.path.isfile(caminho):
+        return ""
+    try:
+        with open(caminho, "rb") as f:
+            return hashlib.md5(f.read()).hexdigest()
+    except Exception:
+        return ""
+
+def ocr_imagem(caminho):
+    """Executa o OCR na imagem e retorna o texto bruto extraído."""
+    try:
+        img = Image.open(caminho)
+        # Corrige imagens com transparência
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGBA")
+            fundo = Image.new("RGBA", img.size, (255, 255, 255, 255))
+            img = Image.alpha_composite(fundo, img).convert("L")
+        else:
+            img = img.convert("L")
+        img = ImageEnhance.Contrast(img).enhance(2.0)
+        texto = pytesseract.image_to_string(img, lang="eng", timeout=15)
+        return texto
+    except Exception:
+        return ""
+
+def processar_ocr(idx, nome_arquivo, hash_antigo, ocr_final_antigo, ocr_bruto_antigo):
+    """
+    Processa o OCR de uma imagem apenas se o hash mudou ou se não há resultado anterior.
+    Retorna o índice, novo hash, código final e texto bruto.
+    """
+    caminho = os.path.join(imagens_dir, nome_arquivo) if nome_arquivo else ""
+    hash_atual = hash_imagem(caminho) if caminho else ""
+    # Só faz OCR se não tem hash ou se hash mudou ou se não há resultado anterior
+    if hash_atual and (hash_atual != hash_antigo or not ocr_final_antigo or not ocr_bruto_antigo or pd.isna(ocr_final_antigo) or pd.isna(ocr_bruto_antigo)):
+        texto_bruto = ocr_imagem(caminho)
+        codigo_final = extrair_codigo(texto_bruto)
+        return idx, hash_atual, codigo_final, texto_bruto
+    else:
+        return idx, hash_antigo, ocr_final_antigo, ocr_bruto_antigo  # Não mudou, mantém o que já tem
+
+# Carrega o DataFrame do CSV
+df = pd.read_csv(csv_path)
+
+# Garante que as colunas necessárias existem e são do tipo string
+for col in ["ocr_final1", "ocr_bruto1", "ocr_final2", "ocr_bruto2", "hash_img1", "hash_img2", "cód.tenis"]:
+    if col not in df.columns:
+        df[col] = ""
+    df[col] = df[col].astype(str)
+
+# OCR para imagem_local1 em paralelo (só refaz se hash mudou)
+resultados1 = []
+with ThreadPoolExecutor(max_workers=6) as executor:
+    futuros = [
+        executor.submit(
+            processar_ocr,
+            idx,
+            row.get("imagem_local1", ""),
+            row.get("hash_img1", ""),
+            row.get("ocr_final1", ""),
+            row.get("ocr_bruto1", "")
+        )
+        for idx, row in df.iterrows()
+    ]
+    for futuro in as_completed(futuros):
+        resultados1.append(futuro.result())
+for idx, hash1, codigo_final1, texto_bruto1 in resultados1:
+    df.at[idx, "hash_img1"] = hash1
+    df.at[idx, "ocr_final1"] = codigo_final1
+    df.at[idx, "ocr_bruto1"] = texto_bruto1
+
+# OCR para imagem_local2 em paralelo (só refaz se hash mudou)
+resultados2 = []
+with ThreadPoolExecutor(max_workers=6) as executor:
+    futuros = [
+        executor.submit(
+            processar_ocr,
+            idx,
+            row.get("imagem_local2", ""),
+            row.get("hash_img2", ""),
+            row.get("ocr_final2", ""),
+            row.get("ocr_bruto2", "")
+        )
+        for idx, row in df.iterrows()
+    ]
+    for futuro in as_completed(futuros):
+        resultados2.append(futuro.result())
+for idx, hash2, codigo_final2, texto_bruto2 in resultados2:
+    df.at[idx, "hash_img2"] = hash2
+    df.at[idx, "ocr_final2"] = codigo_final2
+    df.at[idx, "ocr_bruto2"] = texto_bruto2
+
+def acertividade_codigo(codigo, texto_bruto):
+    """
+    Calcula uma pontuação de 'acertividade' para o código:
+    - Penaliza caracteres estranhos
+    - Soma pontos para códigos mais longos e que aparecem mais vezes no texto bruto
+    """
+    if not codigo or pd.isna(codigo):
+        return 0
+    codigo = str(codigo)
+    penalidade = sum(1 for c in codigo if c in " ?!@#$%&*")
+    ocorrencias = texto_bruto.count(codigo) if texto_bruto else 0
+    return len(codigo) - penalidade + ocorrencias
+
+# Decide qual código é mais confiável entre imagem 1 e 2 e preenche a coluna final
+for idx, row in df.iterrows():
+    cod1 = row.get("ocr_final1", "")
+    cod2 = row.get("ocr_final2", "")
+    texto1 = row.get("ocr_bruto1", "")
+    texto2 = row.get("ocr_bruto2", "")
+    if cod1 and cod2:
+        if cod1 == cod2:
+            df.at[idx, "cód.tenis"] = cod1
+        else:
+            score1 = acertividade_codigo(cod1, texto1)
+            score2 = acertividade_codigo(cod2, texto2)
+            df.at[idx, "cód.tenis"] = cod1 if score1 >= score2 else cod2
+    elif cod1:
+        df.at[idx, "cód.tenis"] = cod1
+    elif cod2:
+        df.at[idx, "cód.tenis"] = cod2
+    else:
+        df.at[idx, "cód.tenis"] = ""
+
+# Salva o DataFrame atualizado no CSV
+df.to_csv(csv_path, index=False, encoding="utf-8-sig")
+print("OCR paralelo otimizado! Só refaz OCR se o hash da imagem mudou. Veja as colunas 'ocr_final1', 'ocr_bruto1', 'ocr_final2', 'ocr_bruto2', 'hash_img1', 'hash_img2' no CSV.")
