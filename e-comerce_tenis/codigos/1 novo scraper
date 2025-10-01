@@ -6,7 +6,6 @@ import re
 from bs4 import BeautifulSoup, Tag, NavigableString
 import pandas as pd
 from urllib.parse import urljoin
-from datetime import datetime
 import json
 
 # Carrega configurações
@@ -26,20 +25,25 @@ headers = {
 def limpar_espacos(txt):
     if txt is None:
         return None
-    import re
     s = txt.replace("\xa0", " ")
     return re.sub(r"\s+", " ", s).strip()
 
 def normalizar_texto(txt):
-    """Remove acentos, deixa minúsculo e remove espaços extras."""
     if not txt:
         return ""
     txt = unicodedata.normalize('NFKD', txt)
     txt = "".join([c for c in txt if not unicodedata.combining(c)])
     return txt.lower().strip()
 
+def limpar_nome_marca(nome):
+    # Remove prefixos como "Tênis Atacado", "Tenis Atacado", etc, e deixa maiúsculo
+    nome = re.sub(r"^(t[eê]nis\s+atacado\s*)", "", nome, flags=re.IGNORECASE)
+    return nome.strip().upper()
+
+def padronizar_modelo(modelo):
+    return modelo.strip().upper() if modelo else ""
+
 def encontrar_titulo_mais_proximo(tag):
-    """Sobe na árvore até encontrar o wp-block-heading mais próximo acima."""
     while tag:
         prev = tag.find_previous(class_="wp-block-heading")
         if prev:
@@ -104,8 +108,6 @@ def montar_bloco_texto_entre_titulos(titulo_tag):
 
 def encontrar_precos_por_modelo(site_content):
     precos = {}
-    padrao_atacado = re.compile(r"R\$\s*\d{1,3}(?:\.\d{3})*,\s*0{0,1}\d{2}", re.IGNORECASE)
-    padrao_varejo = re.compile(r"valor\s*varejo\s*[:\-]?\s*R\$\s*\d{1,3}(?:\.\d{3})*,\s*0{0,1}\d{2}", re.IGNORECASE)
     for heading in site_content.find_all(class_="wp-block-heading"):
         bloco_texto = montar_bloco_texto_entre_titulos(heading)
         preco_atacado = ""
@@ -130,7 +132,7 @@ async def fetch(client, url):
         return None
 
 async def processar_marca(client, a):
-    nome_marca = a.get_text(strip=True)
+    nome_marca = limpar_nome_marca(a.get_text(strip=True))
     url_marca = a["href"]
     if not url_marca.startswith("http"):
         url_marca = httpx.URL(url_base).join(url_marca)
@@ -145,7 +147,7 @@ async def processar_marca(client, a):
                 modelo = encontrar_titulo_mais_proximo(row)
                 numeracao = encontrar_numeracao_mais_proxima(row)
                 preco_atacado, preco_varejo = precos_modelo.get(modelo, ("", ""))
-                if not modelo or modelo.lower().startswith("tênis atacado"):
+                if not modelo:
                     continue
                 cols = row.find_all("div", class_="tiled-gallery__col")
                 link_imagem1 = ""
@@ -172,7 +174,7 @@ async def processar_marca(client, a):
                                 link_imagem2 = urljoin(str(url_marca), orig2.strip())
                 linhas.append({
                     "marca": nome_marca,
-                    "modelo": modelo,
+                    "modelo": padronizar_modelo(modelo),
                     "numeracao": numeracao,
                     "preco_atacado": preco_atacado,
                     "preco_varejo": preco_varejo,
@@ -200,6 +202,9 @@ async def main():
             for modelos in resultados:
                 linhas.extend(modelos)
         df = pd.DataFrame(linhas)
+        # Garante que marca e modelo estão padronizados (caso algum escape)
+        df["marca"] = df["marca"].astype(str).apply(limpar_nome_marca)
+        df["modelo"] = df["modelo"].astype(str).apply(padronizar_modelo)
         # Adiciona as colunas min e max
         def extrair_min_max(numeracao):
             if not isinstance(numeracao, str):
@@ -214,16 +219,31 @@ async def main():
             return None, None
 
         df["min"], df["max"] = zip(*df["numeracao"].map(extrair_min_max))
-        csv_name = CSV_PATTERN  # já carregado do JSON
+        csv_name = CSV_PATTERN
         csv_path = os.path.join(CSV_DIR, csv_name)
         os.makedirs(CSV_DIR, exist_ok=True)
         if os.path.exists(csv_path):
             df_antigo = pd.read_csv(csv_path)
-            if df.equals(df_antigo):
+            cols_base = list(df.columns)
+            # Compara só as colunas base
+            if set(cols_base).issubset(df_antigo.columns):
+                df_antigo_base = df_antigo[cols_base]
+            else:
+                df_antigo_base = df_antigo
+            df_compare = df.sort_values(by=cols_base).reset_index(drop=True)
+            df_antigo_compare = df_antigo_base.sort_values(by=cols_base).reset_index(drop=True)
+            if df_compare.equals(df_antigo_compare):
                 print("Nenhuma alteração detectada. Pipeline não será executado.")
                 return
-        df.to_csv(csv_path, index=False, encoding="utf-8-sig")
-        print(f"CSV '{csv_path}' atualizado com sucesso!")
+            # Houve alteração: atualiza só as colunas base, preservando as extras
+            for col in cols_base:
+                df_antigo[col] = df[col]
+            df_antigo.to_csv(csv_path, index=False, encoding="utf-8-sig")
+            print(f"CSV '{csv_path}' atualizado (mantendo colunas extras)!")
+        else:
+            # Não existe CSV ainda, salva normalmente
+            df.to_csv(csv_path, index=False, encoding="utf-8-sig")
+            print(f"CSV '{csv_path}' criado com sucesso!")
     else:
         print("Menu de marcas não encontrado!")
 
