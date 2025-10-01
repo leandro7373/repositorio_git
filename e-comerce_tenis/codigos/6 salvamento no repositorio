@@ -1,0 +1,13 @@
+import os
+import subprocess
+from datetime import datetime
+
+# Ajuste o caminho para a raiz do seu repositório
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+print(f"Salvando e fazendo commit/push no repositório em: {BASE_DIR}")
+os.chdir(BASE_DIR)
+subprocess.run(["git", "add", "."], check=True)
+msg = f"Atualização automática diária {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+subprocess.run(["git", "commit", "-m", msg], check=True)
+subprocess.run(["git", "push"], check=True)
+print("Commit e push realizados com sucesso!")
