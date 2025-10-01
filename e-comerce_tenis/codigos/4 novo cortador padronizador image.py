@@ -5,7 +5,6 @@ from PIL import Image, ImageEnhance
 import numpy as np
 import pandas as pd
 from concurrent.futures import ThreadPoolExecutor
-import glob
 import re
 import json
 
@@ -19,26 +18,15 @@ CSV_DIR = os.path.join(BASE_DIR, cfg["CSV_DIR"])
 IMAGENS_DIR = os.path.join(BASE_DIR, cfg["IMAGENS_ORIGINAIS_DIR"])
 IMAGENS_LIMPAS_DIR = os.path.join(BASE_DIR, cfg["IMAGENS_LIMPAS_DIR"])
 
-def buscar_pasta_imagens_mais_recente(imagens_dir):
-    padrao = os.path.join(imagens_dir, "originais_*")
-    pastas = glob.glob(padrao)
-    if not pastas:
-        raise FileNotFoundError("Nenhuma pasta 'originais_YYYY-MM-DD' encontrada.")
-    def extrair_data(pasta):
-        m = re.search(r'originais_(\d{4}-\d{2}-\d{2})', pasta)
-        return m.group(1) if m else ""
-    pastas = sorted(pastas, key=lambda p: extrair_data(p))
-    pasta_mais_recente = pastas[-1]
-    data_str = extrair_data(pasta_mais_recente)
-    return pasta_mais_recente, data_str
+# Use os padrões definidos no JSON
+CSV_PATTERN = cfg.get("CSV_PATTERN", "tenis_dados_atual.csv")
+IMAGENS_ORIGINAIS_PATTERN = cfg.get("IMAGENS_ORIGINAIS_PATTERN", "originais_atual")
+IMAGENS_LIMPAS_PATTERN = cfg.get("IMAGENS_LIMPAS_PATTERN", "limpas_atual")
 
-def buscar_csv_mais_recente(csv_dir):
-    padrao = os.path.join(csv_dir, "tenis_dados_*.csv")
-    arquivos = glob.glob(padrao)
-    if not arquivos:
-        raise FileNotFoundError("Nenhum arquivo 'tenis_dados_*.csv' encontrado.")
-    arquivos = sorted(arquivos, key=os.path.getmtime)
-    return arquivos[-1]
+csv_path = os.path.join(CSV_DIR, CSV_PATTERN)
+pasta_imagens = os.path.join(IMAGENS_DIR, IMAGENS_ORIGINAIS_PATTERN)
+output_dir = os.path.join(IMAGENS_LIMPAS_DIR, IMAGENS_LIMPAS_PATTERN)
+os.makedirs(output_dir, exist_ok=True)
 
 def apagar_codigo_na_imagem(img_path, texto_codigo, saida_path):
     img = cv2.imread(img_path)
@@ -86,10 +74,6 @@ def processar_linha(idx, img_col, img_name, codigo, input_dir, output_dir):
     return idx, img_col, status
 
 if __name__ == "__main__":
-    pasta_imagens, data_str = buscar_pasta_imagens_mais_recente(IMAGENS_DIR)
-    output_dir = os.path.join(IMAGENS_LIMPAS_DIR, f"limpas_{data_str}")
-    os.makedirs(output_dir, exist_ok=True)
-    csv_path = buscar_csv_mais_recente(CSV_DIR)
     df = pd.read_csv(csv_path)
 
     # Garante as colunas de status com os nomes solicitados
@@ -122,15 +106,15 @@ if __name__ == "__main__":
                 df.at[idx, "limpeza_imagem2"] = status
             print(f"{img_col} - {df.at[idx, img_col]}: {status}")
 
- # Salva o CSV atualizado
-df.to_csv(csv_path, index=False, encoding="utf-8-sig")
-print("Processamento finalizado. Status salvo no CSV.")
+    # Salva o CSV atualizado
+    df.to_csv(csv_path, index=False, encoding="utf-8-sig")
+    print("Processamento finalizado. Status salvo no CSV.")
 
-# Resumo dos resultados
-limpas1 = (df["limpeza_imagem1"] == "codigo apagado").sum()
-nao_limpas1 = (df["limpeza_imagem1"] == "codigo nao apagado").sum()
-limpas2 = (df["limpeza_imagem2"] == "codigo apagado").sum()
-nao_limpas2 = (df["limpeza_imagem2"] == "codigo nao apagado").sum()
+    # Resumo dos resultados
+    limpas1 = (df["limpeza_imagem1"] == "codigo apagado").sum()
+    nao_limpas1 = (df["limpeza_imagem1"] == "codigo nao apagado").sum()
+    limpas2 = (df["limpeza_imagem2"] == "codigo apagado").sum()
+    nao_limpas2 = (df["limpeza_imagem2"] == "codigo nao apagado").sum()
 
-print(f"Imagem 1 - Limpa: {limpas1}, Não limpa: {nao_limpas1}")
-print(f"Imagem 2 - Limpa: {limpas2}, Não limpa: {nao_limpas2}")
+    print(f"Imagem 1 - Limpa: {limpas1}, Não limpa: {nao_limpas1}")
+    print(f"Imagem 2 - Limpa: {limpas2}, Não limpa: {nao_limpas2}")

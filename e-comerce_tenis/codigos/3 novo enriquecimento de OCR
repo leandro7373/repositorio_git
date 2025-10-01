@@ -5,10 +5,9 @@ import pytesseract
 import re
 import hashlib
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import glob
 import json
 
-# Corrige BASE_DIR para sempre ser a raiz do projeto
+# Define diretórios principais
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG_PATH = os.path.join(BASE_DIR, "configuracoes", "configuração diretórios.json")
 
@@ -16,24 +15,20 @@ CONFIG_PATH = os.path.join(BASE_DIR, "configuracoes", "configuração diretório
 with open(CONFIG_PATH, encoding="utf-8") as f:
     cfg = json.load(f)
 
-# Usa apenas o nome da pasta do projeto uma vez
-CSV_DIR = os.path.join(BASE_DIR, "dados", "csv")
-IMAGENS_DIR = os.path.join(BASE_DIR, "dados", "imagens")
+CSV_DIR = os.path.join(BASE_DIR, cfg["CSV_DIR"])
+IMAGENS_DIR = os.path.join(BASE_DIR, cfg["IMAGENS_ORIGINAIS_DIR"])
+
+# Use os padrões definidos no JSON
+CSV_PATTERN = cfg.get("CSV_PATTERN", "tenis_dados_atual.csv")
+IMAGENS_ORIGINAIS_PATTERN = cfg.get("IMAGENS_ORIGINAIS_PATTERN", "originais_atual")
+
+csv_path = os.path.join(CSV_DIR, CSV_PATTERN)
+imagens_dir = os.path.join(IMAGENS_DIR, IMAGENS_ORIGINAIS_PATTERN)
 
 print("BASE_DIR:", BASE_DIR)
 print("CSV_DIR:", CSV_DIR)
-print("Procurando por:", os.path.join(CSV_DIR, "tenis_dados_*.csv"))
-
-# Busca o CSV mais recente
-csv_files = glob.glob(os.path.join(CSV_DIR, "tenis_dados_*.csv"))
-if not csv_files:
-    raise FileNotFoundError("Nenhum arquivo 'tenis_dados_*.csv' encontrado.")
-csv_path = max(csv_files, key=os.path.getmtime)
-print(f"Usando o arquivo CSV mais recente: {csv_path}")
-
-# Extrai a data do nome do CSV
-data_str = os.path.splitext(os.path.basename(csv_path))[0].split("_")[-1]
-imagens_dir = os.path.join(IMAGENS_DIR, f"originais_{data_str}")
+print("Usando o arquivo CSV:", csv_path)
+print("Usando a pasta de imagens:", imagens_dir)
 
 # Regex para extrair o código do texto OCR
 PATTERN = re.compile(r"\bR\s*[:\-]?\s*[\w\.]{2,20}(?:[-–][\w\.]{1,20}){0,6}\b", re.IGNORECASE)

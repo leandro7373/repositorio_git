@@ -1,6 +1,5 @@
 import os
 import pandas as pd
-from datetime import datetime
 import aiohttp
 import asyncio
 from aiohttp import ClientSession
@@ -16,14 +15,13 @@ with open(CONFIG_PATH, encoding="utf-8") as f:
 CSV_DIR = os.path.join(BASE_DIR, cfg["CSV_DIR"])
 IMAGENS_DIR = os.path.join(BASE_DIR, cfg["IMAGENS_ORIGINAIS_DIR"])
 
-# Data de referência
-data_str = datetime.now().strftime("%Y-%m-%d")
+# Caminho fixo do CSV
+csv_name = cfg["CSV_PATTERN"]
+csv_path = os.path.join(CSV_DIR, csv_name)
 
-# Caminho correto do CSV
-csv_path = os.path.join(CSV_DIR, f"tenis_dados_{data_str}.csv")
-
-# Pasta de destino das imagens
-dest_dir = os.path.join(IMAGENS_DIR, f"originais_{data_str}")
+# Pasta fixa de destino das imagens
+IMAGENS_ORIGINAIS_PATTERN = cfg.get("IMAGENS_ORIGINAIS_PATTERN", "originais_atual")
+dest_dir = os.path.join(IMAGENS_DIR, IMAGENS_ORIGINAIS_PATTERN)
 os.makedirs(dest_dir, exist_ok=True)
 
 # Lê o CSV

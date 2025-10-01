@@ -1,7 +1,6 @@
 import os
 import pandas as pd
 import json
-import glob
 
 # Carrega configuração de diretórios
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -12,20 +11,18 @@ with open(CONFIG_PATH, encoding="utf-8") as f:
 CSV_DIR = os.path.join(BASE_DIR, cfg["CSV_DIR"])
 IMAGENS_LIMPAS_DIR = os.path.join(BASE_DIR, cfg["IMAGENS_LIMPAS_DIR"])
 
-# Parâmetros do GitHub
-USUARIO_GITHUB = "leandro7373"
-REPOSITORIO_GITHUB = "repositorio_git"
-PASTA_GITHUB = "imagens_sem_codigo"  # Ajuste se necessário
+# Parâmetros do GitHub (pode colocar no JSON também, se quiser)
+USUARIO_GITHUB = cfg.get("USUARIO_GITHUB", "leandro7373")
+REPOSITORIO_GITHUB = cfg.get("REPOSITORIO_GITHUB", "repositorio_git")
+PASTA_GITHUB = cfg.get("PASTA_GITHUB", "imagens_sem_codigo")
 
-# Busca o CSV mais recente na pasta CSV_DIR
-csv_files = glob.glob(os.path.join(CSV_DIR, "tenis_dados_*.csv"))
-if not csv_files:
-    raise FileNotFoundError("Nenhum arquivo 'tenis_dados_*.csv' encontrado em dados/csv.")
-CSV_PATH = max(csv_files, key=os.path.getmtime)
+# Usa sempre o CSV fixo do JSON
+CSV_PATTERN = cfg.get("CSV_PATTERN", "tenis_dados_atual.csv")
+CSV_PATH = os.path.join(CSV_DIR, CSV_PATTERN)
 
 # Carrega o CSV
 df = pd.read_csv(CSV_PATH)
-df["image1_link_github"] = ""
+df["image_link_github"] = ""
 df["image2_link_github"] = ""
 
 # Para cada linha do CSV, gera o link bruto do GitHub para as imagens

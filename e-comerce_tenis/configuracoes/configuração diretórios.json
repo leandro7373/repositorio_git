@@ -3,7 +3,7 @@
   "IMAGENS_ORIGINAIS_DIR": "dados/imagens",
   "IMAGENS_LIMPAS_DIR": "dados/imagens",
   "SCRIPTS_DIR": "codigos",
-  "CSV_PATTERN": "tenis_dados_YYYY-MM-DD.csv",
-  "IMAGENS_ORIGINAIS_PATTERN": "originais_YYYY-MM-DD",
-  "IMAGENS_LIMPAS_PATTERN": "limpas_YYYY-MM-DD"
+  "CSV_PATTERN": "tenis_dados_atual.csv",
+  "IMAGENS_ORIGINAIS_PATTERN": "originais_atual",
+  "IMAGENS_LIMPAS_PATTERN": "limpas_atual"
 }

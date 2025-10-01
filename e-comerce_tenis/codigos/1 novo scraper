@@ -214,14 +214,16 @@ async def main():
             return None, None
 
         df["min"], df["max"] = zip(*df["numeracao"].map(extrair_min_max))
-        data_str = datetime.now().strftime("%Y-%m-%d")
-        csv_name = config["CSV_PATTERN"].replace("YYYY-MM-DD", data_str)
+        csv_name = CSV_PATTERN  # já carregado do JSON
         csv_path = os.path.join(CSV_DIR, csv_name)
         os.makedirs(CSV_DIR, exist_ok=True)
         if os.path.exists(csv_path):
-            os.remove(csv_path)
+            df_antigo = pd.read_csv(csv_path)
+            if df.equals(df_antigo):
+                print("Nenhuma alteração detectada. Pipeline não será executado.")
+                return
         df.to_csv(csv_path, index=False, encoding="utf-8-sig")
-        print(f"CSV '{csv_path}' criado com sucesso!")
+        print(f"CSV '{csv_path}' atualizado com sucesso!")
     else:
         print("Menu de marcas não encontrado!")
 
