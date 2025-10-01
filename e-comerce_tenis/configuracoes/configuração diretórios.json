@@ -5,5 +5,8 @@
   "SCRIPTS_DIR": "codigos",
   "CSV_PATTERN": "tenis_dados_atual.csv",
   "IMAGENS_ORIGINAIS_PATTERN": "originais_atual",
-  "IMAGENS_LIMPAS_PATTERN": "limpas_atual"
+  "IMAGENS_LIMPAS_PATTERN": "limpas_atual",
+  "USUARIO_GITHUB": "leandro7373",
+  "REPOSITORIO_GITHUB": "repositorio_git",
+  "IMAGENS_LIMPAS_GITHUB_DIR": "e-comerce_tenis/dados/imagens/limpas_atual"
 }
