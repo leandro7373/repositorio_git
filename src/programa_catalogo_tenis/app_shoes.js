@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import Papa from "papaparse";
 import "./app_shoes.css";
 
-const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSMy3ycr2KZJ8UA6V_uoBvHVicKx3W79C0-zaW_7m5ANTL8M9-LwppcIuxK7P7scAr7-nM7g1rTXMRS/pub?gid=1965323582&single=true&output=csv";
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSMy3ycr2KZJ8UA6V_uoBvHVicKx3W79C0-zaW_7m5ANTL8M9-LwppcIuxK7P7scAr7-nM7g1rTXMRS/pub?gid=1426651797&single=true&output=csv";
 
 function fetchCSV(url, callback) {
   Papa.parse(url, {
@@ -50,6 +50,7 @@ export default function CatalogoTenis() {
   }
   useEffect(() => {
     fetchCSV(CSV_URL, (data) => {
+      console.log("Dados carregados do CSV:", data); // <-- ADICIONE ESTA LINHA
       setProdutos(data);
       const precos = data.map((p) => {
         const valor = p["preço_venda"] || p["preco_atacado_fornecedor"] || "0";
