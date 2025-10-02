@@ -54,7 +54,7 @@
 }
 .carrinho-qtd-box {
   position: absolute;      /* Permite posicionar livremente */
-  right: 40px;             /* Distância da borda direita */
+  right: 0px;             /* Distância da borda direita */
   top: 60%;                /* Centraliza verticalmente */
   transform: translateY(-60%); /* Ajusta para o centro exato */
   display: flex;
@@ -90,8 +90,14 @@
   font-weight: 600;
   color: #000000;
 }
-.carrinho-btn-area {
-  min-height: 80px;
+.carrinho-btn-area .btn {
+  white-space: nowrap;      /* Não quebra linha no texto */
+  min-width: 90px;          /* Botão mais estreito */
+  padding-left: 15px;
+  padding-right: 15px;
+  font-size: 0.8rem;
+  height: 50px;
+  line-height: 1.2;
 }
 
 /* Modal */
@@ -429,4 +435,15 @@
     flex: 0 0 25%;
     max-width: 25%;
   }
+}
+/* Transição suave para todos os botões */
+button, .btn {
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+/* Efeito de clique (pressionado) */
+button:active, .btn:active {
+  filter: brightness(0.85);
+  /* ou, se preferir, altere a cor de fundo: */
+  /* background: #e0e0e0 !important; */
 }

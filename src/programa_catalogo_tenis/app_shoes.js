@@ -50,7 +50,6 @@ export default function CatalogoTenis() {
   }
   useEffect(() => {
     fetchCSV(CSV_URL, (data) => {
-      console.log("Dados carregados do CSV:", data); // <-- ADICIONE ESTA LINHA
       setProdutos(data);
       const precos = data.map((p) => {
         const valor = p["preço_venda"] || p["preco_atacado_fornecedor"] || "0";
@@ -223,35 +222,10 @@ export default function CatalogoTenis() {
     );
   }
 
-  function Carrinho() {
-    // Calcule o total apenas dos itens selecionados
-    const itensSelecionados = itensCarrinho.filter((_, idx) => selecionados.includes(idx));
-    const total = itensSelecionados.reduce((acc, p) => {
-      const valor = p["preço_venda"] || p["preco_atacado_fornecedor"] || "0";
-      return acc + Number(valor.replace("R$", "").replace(",", ".")) * (Number(p.quantidade) || 1);
-    }, 0);
-
-    function enviarPedido() {
-      // Filtra apenas os itens selecionados
-      const itensParaEnviar = itensCarrinho.filter((_, idx) => selecionados.includes(idx));
-      const mensagem = itensParaEnviar.map((p, idx) => (
-        `• Código: ${p["cód.tenis"] || "-"}\n` +
-        `Marca: ${p.marca}\n` +
-        `Modelo: ${p.modelo}\n` +
-        `Numeração: ${p.numeracao || "-"}\n` +
-        `Qtd: ${p.quantidade || 1}\n` +
-        `Valor: ${p["preço_venda"] || p["preco_atacado_fornecedor"]}\n`
-      )).join('\n----------------------\n');
-      const texto = `Olá! Gostaria de fazer um pedido:\n\n${mensagem}\nTotal: R$ ${total.toFixed(2)}`;
-      const url = `https://wa.me/5531983581412?text=${encodeURIComponent(texto)}`;
-      window.open(url, "_blank");
-    }
-
-    const [botaoPedidoAtivo, setBotaoPedidoAtivo] = useState(false);
-
-    function SwipeItem({ p, idx }) {
-      return (
-        <li className="carrinho-item" key={idx}>
+  function CarrinhoItem({ p, idx }) {
+    return (
+      <li className="carrinho-item" key={idx} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center" }}>
           <input
             type="checkbox"
             checked={selecionados.includes(idx)}
@@ -294,9 +268,34 @@ export default function CatalogoTenis() {
               >+</button>
             </div>
           </div>
-        </li>
-      );
+        </div>
+      </li>
+    );
+  }
+
+  function Carrinho() {
+    const itensSelecionados = itensCarrinho.filter((_, idx) => selecionados.includes(idx));
+    const total = itensSelecionados.reduce((acc, p) => {
+      const valor = p["preço_venda"] || p["preco_atacado_fornecedor"] || "0";
+      return acc + Number(valor.replace("R$", "").replace(",", ".")) * (Number(p.quantidade) || 1);
+    }, 0);
+
+    function enviarPedido() {
+      const itensParaEnviar = itensCarrinho.filter((_, idx) => selecionados.includes(idx));
+      const mensagem = itensParaEnviar.map((p, idx) => (
+        `• Código: ${p["cód.tenis"] || "-"}\n` +
+        `Marca: ${p.marca}\n` +
+        `Modelo: ${p.modelo}\n` +
+        `Numeração: ${p.numeracao || "-"}\n` +
+        `Qtd: ${p.quantidade || 1}\n` +
+        `Valor: ${p["preço_venda"] || p["preco_atacado_fornecedor"]}\n`
+      )).join('\n----------------------\n');
+      const texto = `Olá! Gostaria de fazer um pedido:\n\n${mensagem}\nTotal: R$ ${total.toFixed(2)}`;
+      const url = `https://wa.me/5531983581412?text=${encodeURIComponent(texto)}`;
+      window.open(url, "_blank");
     }
+
+    const [botaoPedidoAtivo, setBotaoPedidoAtivo] = useState(false);
 
     return (
       <div className={`offcanvas offcanvas-start${drawerOpen ? " show" : ""}`} tabIndex="-1">
@@ -307,14 +306,13 @@ export default function CatalogoTenis() {
         <div className="offcanvas-body">
           <ul className="list-group">
             {itensCarrinho.map((p, idx) => (
-              <SwipeItem p={p} idx={idx} key={idx} />
+              <CarrinhoItem p={p} idx={idx} key={idx} />
             ))}
           </ul>
           <div className="mt-3 fw-bold">
             Total: R$ {total.toFixed(2)}
           </div>
           <div className="d-flex justify-content-center align-items-center carrinho-btn-area" style={{gap: 12}}>
-            {/* Checkbox "Todos" */}
             <input
               type="checkbox"
               checked={itensCarrinho.length > 0 && selecionados.length === itensCarrinho.length}
@@ -331,6 +329,16 @@ export default function CatalogoTenis() {
             <label htmlFor="selecionar-todos" style={{marginRight: 16, marginBottom: 0, userSelect: "none", cursor: "pointer"}}>
               Todos
             </label>
+            <button
+              className="btn btn-danger"
+              onClick={() => {
+                setCarrinho(carrinho.filter((_, idx) => !selecionados.includes(idx)));
+                setSelecionados([]);
+              }}
+              disabled={selecionados.length === 0}
+            >
+              APAGAR ITEM
+            </button>
             <button
               className={`btn btn-dark btn-carrinho-enviar${botaoPedidoAtivo ? " enviando" : ""}`}
               onClick={() => {

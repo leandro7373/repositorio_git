@@ -98,7 +98,7 @@ for col in ["ocr_final1", "ocr_bruto1", "ocr_final2", "ocr_bruto2", "hash_img1",
         df[col] = ""
     df[col] = df[col].astype(str)
 
-# OCR para imagem_local1 em paralelo (só refaz se hash mudou)
+# OCR para imagem_local1 em paralelo (só refaz se hash mudou e se não há OCR preenchido)
 resultados1 = []
 with ThreadPoolExecutor(max_workers=6) as executor:
     futuros = [
@@ -111,15 +111,17 @@ with ThreadPoolExecutor(max_workers=6) as executor:
             row.get("ocr_bruto1", "")
         )
         for idx, row in df.iterrows()
+        if not row.get("ocr_final1") or pd.isna(row.get("ocr_final1")) or row.get("ocr_final1") == ""
     ]
     for futuro in as_completed(futuros):
         resultados1.append(futuro.result())
+# Atualiza apenas as linhas processadas
 for idx, hash1, codigo_final1, texto_bruto1 in resultados1:
     df.at[idx, "hash_img1"] = hash1
     df.at[idx, "ocr_final1"] = codigo_final1
     df.at[idx, "ocr_bruto1"] = texto_bruto1
 
-# OCR para imagem_local2 em paralelo (só refaz se hash mudou)
+# OCR para imagem_local2 em paralelo (só refaz se hash mudou e se não há OCR preenchido)
 resultados2 = []
 with ThreadPoolExecutor(max_workers=6) as executor:
     futuros = [
@@ -132,9 +134,11 @@ with ThreadPoolExecutor(max_workers=6) as executor:
             row.get("ocr_bruto2", "")
         )
         for idx, row in df.iterrows()
+        if not row.get("ocr_final2") or pd.isna(row.get("ocr_final2")) or row.get("ocr_final2") == ""
     ]
     for futuro in as_completed(futuros):
         resultados2.append(futuro.result())
+# Atualiza apenas as linhas processadas
 for idx, hash2, codigo_final2, texto_bruto2 in resultados2:
     df.at[idx, "hash_img2"] = hash2
     df.at[idx, "ocr_final2"] = codigo_final2
