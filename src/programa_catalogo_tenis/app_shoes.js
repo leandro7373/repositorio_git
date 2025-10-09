@@ -291,7 +291,7 @@ export default function CatalogoTenis() {
         `Valor: ${p["preço_venda"] || p["preco_atacado_fornecedor"]}\n`
       )).join('\n----------------------\n');
       const texto = `Olá! Gostaria de fazer um pedido:\n\n${mensagem}\nTotal: R$ ${total.toFixed(2)}`;
-      const url = `https://wa.me/5531983581412?text=${encodeURIComponent(texto)}`;
+      const url = `https://wa.me/5531994421411?text=${encodeURIComponent(texto)}`;
       window.open(url, "_blank");
     }
 
